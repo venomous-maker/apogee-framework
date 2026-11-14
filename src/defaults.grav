@@ -1,0 +1,79 @@
+// defaults.grav — the configuration an app has without config files: each
+// setting from the environment (.env) when set, else a sensible default.
+// config/*.json overrides any of them.
+import "std"
+import "apogee-config"
+
+namespace apogee {
+
+    class Defaults {
+        static fn apply(app: Application) {
+            let base = app.basePath;
+            let put = fn(path: string, value: any) { if (!Config.has(path)) { Config.set(path, value); } };
+            let p = fn(sub: string) -> string { return Path.combine(base, sub); };
+            // app
+            put("app.name", Env.get("APP_NAME", "Apogee"));
+            put("app.env", Env.get("APP_ENV", "production"));
+            put("app.debug", Env.getBool("APP_DEBUG", false));
+            put("app.url", Env.get("APP_URL", "http://localhost:8000"));
+            put("app.key", Env.get("APP_KEY", ""));
+            put("app.timezone", Env.get("APP_TIMEZONE", "UTC"));
+            put("app.locale", Env.get("APP_LOCALE", "en"));
+            put("app.maintenance.file", p("storage/framework/down"));
+            // http
+            put("http.host", Env.get("HTTP_HOST", "*"));
+            put("http.port", Env.getInt("HTTP_PORT", 8000));
+            put("http.trusted_proxies", Env.get("TRUSTED_PROXIES", ""));
+            // logging
+            put("logging.default", Env.get("LOG_CHANNEL", "stack"));
+            put("logging.level", Env.get("LOG_LEVEL", "debug"));
+            put("logging.channels.stack.driver", "stack");
+            put("logging.channels.stack.channels", Env.get("LOG_STACK", "single"));
+            put("logging.channels.single.driver", "single");
+            put("logging.channels.single.path", p("storage/logs/app.log"));
+            put("logging.channels.daily.driver", "daily");
+            put("logging.channels.daily.path", p("storage/logs/app.log"));
+            put("logging.channels.daily.days", Env.getInt("LOG_DAILY_DAYS", 14));
+            put("logging.channels.stderr.driver", "stderr");
+            // database
+            put("database.default", Env.get("DB_CONNECTION", "sqlite"));
+            put("database.connections.sqlite.driver", "sqlite");
+            put("database.connections.sqlite.database", Env.get("DB_DATABASE", p("database/database.sqlite")));
+            put("database.connections.mysql.driver", "mysql");
+            put("database.connections.mysql.url", Env.get("DB_URL", "mysql://root@127.0.0.1:3306/apogee"));
+            put("database.connections.pgsql.driver", "postgres");
+            put("database.connections.pgsql.url", Env.get("DB_URL", "postgresql://postgres@127.0.0.1:5432/apogee"));
+            put("database.pool", Env.getInt("DB_POOL", 8));
+            // redis
+            put("redis.url", Env.get("REDIS_URL", ""));
+            // cache
+            put("cache.default", Env.get("CACHE_STORE", "memory"));
+            put("cache.prefix", Env.get("CACHE_PREFIX", "apogee:cache:"));
+            put("cache.stores.file.path", p("storage/framework/cache"));
+            // queue
+            put("queue.default", Env.get("QUEUE_CONNECTION", "sync"));
+            put("queue.retry_after", Env.getInt("QUEUE_RETRY_AFTER", 90));
+            put("queue.failed.driver", Env.get("QUEUE_FAILED_DRIVER", "file"));
+            put("queue.failed.path", p("storage/logs/failed-jobs.jsonl"));
+            // session
+            put("session.driver", Env.get("SESSION_DRIVER", "file"));
+            put("session.lifetime", Env.getInt("SESSION_LIFETIME", 120));
+            put("session.path", p("storage/framework/sessions"));
+            put("session.cookie", Env.get("SESSION_COOKIE", "apogee_session"));
+            // views
+            put("view.paths", p("resources/views"));
+            // mail
+            put("mail.default", Env.get("MAIL_MAILER", "log"));
+            put("mail.from.address", Env.get("MAIL_FROM_ADDRESS", "hello@example.com"));
+            put("mail.from.name", Env.get("MAIL_FROM_NAME", Env.get("APP_NAME", "Apogee")));
+            put("mail.smtp.url", Env.get("MAIL_URL", "smtp://127.0.0.1:1025?security=none"));
+            put("mail.log.path", p("storage/logs/mail.log"));
+            put("mail.always_to", Env.get("MAIL_ALWAYS_TO", ""));
+            // auth
+            put("auth.model", Env.get("AUTH_MODEL", ""));
+            put("auth.home", Env.get("AUTH_HOME", "/home"));
+            put("auth.login", Env.get("AUTH_LOGIN", "/login"));
+            put("auth.password_iterations", Env.getInt("AUTH_PASSWORD_ITERATIONS", 600000));
+        }
+    }
+}
