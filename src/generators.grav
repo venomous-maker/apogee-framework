@@ -95,7 +95,7 @@ namespace apogee {
             } else if (kind == "request") {
                 body = "    class " + cls + " extends FormRequest {\n        constructor() {}\n        fn authorize() -> bool { return true; }\n        fn rules() -> HashMap<string, any> {\n            return {\"name\": \"required|string|max:255\"};\n        }\n    }\n";
             } else if (kind == "resource") {
-                body = "    class " + cls + " extends JsonResource {\n        fn toArray(req: Request) -> HashMap<string, any> {\n            return {\"id\": self.get(\"id\")};\n        }\n    }\n";
+                body = "    class " + cls + " extends JsonResource {\n        constructor(resource: any = null) { super(resource); }\n        fn toArray(req: Request) -> HashMap<string, any> {\n            return self.fields().add(\"id\", Data.get(self.resource, \"id\")).build();\n        }\n    }\n";
             } else if (kind == "model") {
                 body = "    class " + cls + " extends Model {\n        public id: long = 0\n        public createdAt: DateTime? = null\n        public updatedAt: DateTime? = null\n        constructor() {}\n    }\n";
             } else if (kind == "job") {
