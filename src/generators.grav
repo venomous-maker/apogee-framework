@@ -8,6 +8,7 @@
 import "std"
 import "apogee-support"
 import "apogee-console"
+import "application.grav"
 
 namespace apogee {
 

@@ -3,6 +3,7 @@
 // config/*.json overrides any of them.
 import "std"
 import "apogee-config"
+import "application.grav"
 
 namespace apogee {
 
