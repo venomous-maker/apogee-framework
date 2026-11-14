@@ -145,12 +145,15 @@ namespace apogee {
             app.container.singleton::<QueueManager>(fn(c: Container) -> QueueManager {
                 let q = new QueueManager(c);
                 q.addConnection("memory", new MemoryQueueDriver());
-                q.addConnection("database", new DatabaseQueueDriver(c.make::<Pool>()));
+                let dbQueue = new DatabaseQueueDriver(c.make::<Pool>());
+                q.addConnection("database", dbQueue);
+                // (its tables made when they are used: CREATE TABLE IF NOT EXISTS, no migration to remember)
+                if (Config.getString("queue.default", "sync") == "database") { dbQueue.createTable(); }
                 let redisUrl = Config.getString("redis.url");
                 if (redisUrl != "") { q.addConnection("redis", RedisQueueDriver.open(redisUrl, 8, "apogee:queues:")); }
                 q.defaultConnection = Config.getString("queue.default", "sync");
                 let failed = Config.getString("queue.failed.driver", "file");
-                if (failed == "database") { let store = new DatabaseFailedJobStore(c.make::<Pool>()); q.failedJobs = store; }
+                if (failed == "database") { let store = new DatabaseFailedJobStore(c.make::<Pool>()); store.createTable(); q.failedJobs = store; }
                 else if (failed == "file") {
                     let path = Config.getString("queue.failed.path");
                     let d = Path.dirname(path);
