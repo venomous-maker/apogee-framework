@@ -43,7 +43,7 @@ namespace apogee {
             let sections: Array<Array<string>> = [
                 ["Environment", "Application Name", app.name], ["Environment", "Apogee Version", app.version],
                 ["Environment", "Environment", app.environment], ["Environment", "Debug Mode", app.debug ? "ENABLED" : "OFF"],
-                ["Environment", "URL", app.url], ["Environment", "Timezone", app.timezone], ["Environment", "Maintenance Mode", app.isDownForMaintenance() ? "ON" : "OFF"],
+                ["Environment", "URL", app.url], ["Environment", "Application Key", app.keyIsEphemeral ? "MISSING (run key:generate)" : "set"], ["Environment", "Timezone", app.timezone], ["Environment", "Maintenance Mode", app.isDownForMaintenance() ? "ON" : "OFF"],
                 ["Drivers", "Cache", Config.getString("cache.default")], ["Drivers", "Database", Config.getString("database.default")],
                 ["Drivers", "Logs", Config.getString("logging.default")], ["Drivers", "Mail", Config.getString("mail.default")],
                 ["Drivers", "Queue", Config.getString("queue.default")], ["Drivers", "Session", Config.getString("session.driver")],
@@ -98,6 +98,7 @@ namespace apogee {
             f.write(Str.join(lines, "\n") + "\n");
             Config.set("app.key", key);
             app.key = key;
+            app.keyIsEphemeral = false;
             self.output.infoBlock("Application key set successfully.");
             return 0;
         }

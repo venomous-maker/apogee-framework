@@ -51,6 +51,8 @@ namespace apogee {
         // The app key (APP_KEY): signs cookies, sessions, signed URLs.
         public key: string = ""
         public timezone: string = "UTC"
+        // No APP_KEY was set: the key lives only as long as this process (run key:generate).
+        public keyIsEphemeral: bool = false
         // Set by the builder (Application.configure).
         public webRoutes: fn(Router) = null
         public apiRoutes: fn(Router) = null
@@ -100,6 +102,12 @@ namespace apogee {
             self.debug = Config.getBool("app.debug", false);
             self.url = Config.getString("app.url", "http://localhost");
             self.key = Config.getString("app.key", "");
+            if (self.key == "") {
+                // (no APP_KEY yet: an ephemeral one, so every command works, key:generate first;
+                // sessions and signed URLs do not outlive the process until a key is set)
+                self.key = "ephemeral:" + Hash.randomToken(32);
+                self.keyIsEphemeral = true;
+            }
             self.timezone = Config.getString("app.timezone", "UTC");
             Moment.setDefaultTimezone(self.timezone);
         }
