@@ -301,6 +301,8 @@ namespace apogee {
             r.aliasInstance("session", new StartSession(c.make::<SessionManager>()));
             r.aliasInstance("csrf", new VerifyCsrfToken());
             let auth = c.make::<AuthManager>();
+            // (req.user on any route: the default guard is asked on first read)
+            Request.userResolver = fn(req: Request) -> any { return auth.guard().user(req); };
             r.aliasMiddleware("auth", fn(a: Array<string>) -> Middleware { return new Authenticate(auth, a); });
             r.aliasInstance("guest", new RedirectIfAuthenticated(auth, Config.getString("auth.home", "/home")));
             r.aliasMiddleware("can", fn(a: Array<string>) -> Middleware { return new Authorize(auth, a); });
