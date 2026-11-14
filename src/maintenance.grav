@@ -1,0 +1,78 @@
+// maintenance.grav — maintenance mode: `./app down` puts up a 503 for
+// everyone (but the IPs allowed, and browsers that visited the secret path);
+// `./app up` takes it down again. The state is a file, so every server
+// process sharing the storage directory sees it.
+import "std"
+import "apogee-support"
+import "apogee-http"
+import "apogee-config"
+
+namespace apogee {
+
+    class MaintenanceMode {
+        static fn file(app: Application) -> string { return Config.getString("app.maintenance.file", app.storagePath("framework/down")); }
+        static fn active(app: Application) -> bool { return new File(MaintenanceMode.file(app)).exists(); }
+        // Turns it on; the secret path that lets a browser in ("" for none).
+        static fn down(app: Application, secret: string = "", retry: long = 60, refresh: long = 0, status: int = 503, message: string = "", allow: Array<string> = new Array<string>()) {
+            let f = MaintenanceMode.file(app);
+            let d = Path.dirname(f);
+            if (!Dir.exists(d)) { Dir.create(d); }
+            let o = Json.object();
+            o.set("time", Time.now());
+            o.set("secret", secret);
+            o.set("retry", retry);
+            o.set("refresh", refresh);
+            o.set("status", status as long);
+            o.set("message", message);
+            let ips = Json.array();
+            for (ip in allow) { ips.push(ip); }
+            o.set("allow", ips);
+            new File(f).write(o.pretty());
+        }
+        static fn up(app: Application) -> bool { let f = new File(MaintenanceMode.file(app)); return f.exists() && f.delete(); }
+        static fn data(app: Application) -> JsonValue {
+            let f = new File(MaintenanceMode.file(app));
+            if (!f.exists()) { return null; }
+            let j = Json.tryParse(f.readOr(""));
+            return j == null ? Json.object() : j;
+        }
+    }
+
+    // Runs first on every request: while the app is down, a 503 (with
+    // Retry-After), except for allowed IPs, `/up`, and browsers holding the
+    // bypass cookie (set by visiting /<secret>).
+    class PreventRequestsDuringMaintenance implements Middleware {
+        private app: Application
+        // Paths that work while down ("up" is the health check).
+        public except: Array<string>
+        constructor(app: Application) { self.app = app; self.except = ["up"]; }
+        fn handle(req: Request, next: fn(Request) -> Response) -> Response {
+            if (!MaintenanceMode.active(self.app)) { return next(req); }
+            let d = MaintenanceMode.data(self.app);
+            if (d == null) { return next(req); }
+            let ip = req.ip();
+            if (d.has("allow")) { for (a in d.get("allow").asArray()) { if (a.asString() == ip) { return next(req); } } }
+            for (p in self.except) { if (req.pathIs([p])) { return next(req); } }
+            let secret = d.getString("secret", "");
+            let cookieValue = secret == "" ? "" : Hash.hmacSha256(self.app.key, "maintenance:" + secret);
+            if (secret != "" && req.path() == "/" + secret) {
+                return Response.redirect("/").withCookie(new Cookie("apogee_maintenance", cookieValue).maxAge(43200 * 60));
+            }
+            if (secret != "" && Hash.equals(req.cookie("apogee_maintenance"), cookieValue)) { return next(req); }
+            let status = d.getInt("status", 503);
+            let message = d.getString("message", "");
+            let res: Response = null;
+            if (req.expectsJson()) { res = Response.json({"message": message == "" ? "Service Unavailable" : message}, status); }
+            else {
+                let refresh = d.getLong("refresh", 0);
+                res = Response.html("<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Service Unavailable</title>" +
+                    (refresh > 0 ? "<meta http-equiv=\"refresh\" content=\"${refresh}\">" : "") +
+                    "<style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;color:#4a5568;background:#f7fafc}h1{font-weight:500}</style></head>" +
+                    "<body><div style=\"text-align:center\"><h1>${status} | " + HttpException.escape(message == "" ? "Service Unavailable" : message) + "</h1></div></body></html>", status);
+            }
+            let retry = d.getLong("retry", 0);
+            if (retry > 0) { res.header("Retry-After", "${retry}"); }
+            return res;
+        }
+    }
+}
