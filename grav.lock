@@ -1,0 +1,14 @@
+# grav.lock: exact commits of the installed dependencies (generated; commit this file)
+apogee-container = { source = "github.com/venomous-maker/apogee-container", version = "", commit = "d25e33256e482a0a2c115c26c421b2e4cd12cf3a" }
+apogee-config = { source = "github.com/venomous-maker/apogee-config", version = "", commit = "0bbb38bbd2a9d26a2b4fde28627eb1106ac42731" }
+apogee-events = { source = "github.com/venomous-maker/apogee-events", version = "", commit = "c90ece23ea297db40249d1e0975a39db13e167bb" }
+apogee-http = { source = "github.com/venomous-maker/apogee-http", version = "", commit = "e34c2bd89a183aeabf7e66a962d1d4dcba140140" }
+apogee-routing = { source = "github.com/venomous-maker/apogee-routing", version = "", commit = "507faa40c9246f5c7b29be816b8223272f910f90" }
+apogee-validation = { source = "github.com/venomous-maker/apogee-validation", version = "", commit = "365fc8bf2efba32ccbdf4cbd6f6393c8f3ec1a36" }
+apogee-session = { source = "github.com/venomous-maker/apogee-session", version = "", commit = "2d3b2f73586461d26a095830bb23772c1d0c0331" }
+apogee-view = { source = "github.com/venomous-maker/apogee-view", version = "", commit = "35a4e3c2b76bbb5d945d994fcd6246f412759644" }
+apogee-auth = { source = "github.com/venomous-maker/apogee-auth", version = "", commit = "878825415dc4d61388eac58f6066dc3a03b9d5ad" }
+grav-redis = { source = "github.com/venomous-maker/grav-redis", version = "", commit = "37d0f0d8734d40ba492a3cd9d6396bc8e3ec7bc2" }
+grav-orbit = { source = "github.com/venomous-maker/grav-orbit", version = "", commit = "27d531ea748eccad9342feb94de17e0b487d753e" }
+grav-db = { source = "github.com/venomous-maker/grav-db", version = "", commit = "a490e10948381b4a312701856abd153f7beab4fa" }
+grav-logger = { source = "github.com/venomous-maker/grav-logger", version = "", commit = "375b35abb2e2db01a17787149b44ba3ae4ffd45d" }

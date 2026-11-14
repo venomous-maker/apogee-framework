@@ -1,0 +1,178 @@
+// apogee-framework's tests: an app in a temporary folder, end to end — its
+// configuration, providers (deferred ones too), routes through the HTTP
+// kernel, auth over an Orbit model, validation with unique rules, queued
+// jobs and mail, maintenance mode, migrations and seeders, and the commands.
+import "std"
+import "../src/all.grav"
+use apogee.*
+use orbit.*
+use db.*
+
+class Member extends Model implements Authenticatable {
+    public id: long = 0
+    public name: string = ""
+    public email: string = ""
+    @Hidden public password: string = ""
+    @Hidden public rememberTokenValue: string = ""
+    @Hidden public apiToken: string = ""
+    public createdAt: DateTime? = null
+    public updatedAt: DateTime? = null
+    constructor() {}
+    fn authId() -> string { return "${self.id}" }
+    fn authPassword() -> string { return self.password }
+    fn rememberToken() -> string { return self.rememberTokenValue }
+    fn setRememberToken(t: string) { self.rememberTokenValue = t }
+}
+class CreateMembers extends Migration {
+    constructor() {}
+    fn up() {
+        Schema.create("members", fn(t: Blueprint) {
+            t.id(); t.varchar("name"); t.varchar("email", 190).unique(); t.varchar("password"); t.varchar("remember_token_value").nullable()
+            t.varchar("api_token").nullable(); t.timestamps()
+        })
+    }
+    fn down() { Schema.dropIfExists("members") }
+}
+class DatabaseSeeder extends Seeder {
+    constructor() {}
+    fn run() { Member.create(fields("name", "Ada", "email", "ada@x.io", "password", Passwords.make("secret123"))) }
+}
+
+class Greeter { public word: string = "hello"  constructor() {} }
+// A deferred provider: registers only when a Greeter is first made.
+class GreeterProvider extends ServiceProvider {
+    static registered: int = 0
+    constructor() {}
+    fn provides() -> Array<string> { return [nameof(Greeter)] }
+    fn register() { GreeterProvider.registered += 1; self.app.container.singleton::<Greeter>(fn(c: Container) -> Greeter { let g = new Greeter(); g.word = "hi"; return g }) }
+}
+class Booted { static log: Array<string> = new Array<string>() }
+class AppProvider extends ServiceProvider {
+    constructor() {}
+    fn boot(events: Events) { Booted.log.push("booted"); events.listen::<Welcomed>(fn(e: Welcomed) { Booted.log.push("welcomed " + e.email) }) }
+}
+@Event class Welcomed { public email: string = ""  constructor(email: string = "") { self.email = email } }
+class SendWelcome extends Job {
+    public memberId: long = 0
+    constructor(memberId: long = 0) { self.memberId = memberId }
+    fn handle(mail: Mailer, events: Events) {
+        let m = Member.find(self.memberId)
+        mail.to(m.email).send(new WelcomeMail(m.name))
+        events.dispatch(new Welcomed(m.email))
+    }
+}
+class WelcomeMail extends Mailable {
+    public name: string = ""
+    constructor(name: string = "") { self.name = name }
+    fn build() { self.subject("Welcome, " + self.name).markdown("# Hi " + self.name + "!\n\nGlad you are here.") }
+}
+
+fn makeApp() -> Application {
+    let dir = Path.combine(Dir.temp(), "apogee-framework-test")
+    Dir.removeAll(dir)
+    Dir.create(dir + "/config")
+    Dir.create(dir + "/resources/views")
+    new File(dir + "/.env").write("APP_NAME=Testapp\nAPP_ENV=testing\nAPP_DEBUG=true\nAPP_KEY=base64:dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleQ==\nDB_DATABASE=" + dir + "/db.sqlite\nMAIL_MAILER=array\nQUEUE_CONNECTION=memory\nSESSION_DRIVER=memory\nCACHE_STORE=memory\n")
+    new File(dir + "/config/auth.json").write("{\"model\": \"Member\"}")
+    new File(dir + "/config/app.json").write("{\"timezone\": \"Africa/Nairobi\", \"features\": {\"signup\": true}}")
+    Passwords.iterations = 1000
+    let app = Application.configure(dir)
+        .withProviders([new GreeterProvider() as ServiceProvider, new AppProvider()])
+        .withRouting(fn(r: Router) {
+            r.get("/", fn(req: Request) -> Response { return Response.text("home") }).name("home")
+        }, fn(r: Router) {
+            r.post("/members", fn(req: Request) -> Response {
+                let data = req.validate({"name": "required|string|max:50", "email": ["required", "email", Rule.unique("members", "email")], "password": "required|min:8"})
+                let m = Member.create(fields("name", data["name"], "email", data["email"], "password", Passwords.make(str(data["password"]))))
+                req.make::<QueueManager>().dispatch(new SendWelcome(m.id))
+                return Response.created({"id": m.id})
+            }).name("members.store")
+            r.get("/me", fn(req: Request) -> Response { return Response.json({"name": (req.user as Member).name}) }).middleware(["auth:api"])
+        })
+        .withSchedule(fn(s: Schedule) { s.command("inspire").hourly() })
+        .withMigrations([new CreateMembers() as Migration])
+        .withSeeders([new DatabaseSeeder() as Seeder])
+        .create()
+    return app
+}
+fn api(app: Application, method: string, path: string, body: string = "", token: string = "") -> Response {
+    let req = Request.make(method, path, body, body == "" ? "" : "application/json")
+    req.http.headers.set("Accept", "application/json")
+    if (token != "") { req.http.headers.set("Authorization", "Bearer " + token) }
+    return app.handle(req)
+}
+
+test "configuration: .env, config files, defaults; providers, deferred ones, boot injection" {
+    let app = makeApp()
+    assertEq("${app.name} ${app.environment} ${app.debug} ${app.timezone} ${Config.getBool("app.features.signup")} ${Config.getString("queue.default")}", "Testapp testing true Africa/Nairobi true memory")
+    assertEq(GreeterProvider.registered, 0)                       // deferred
+    app.boot()
+    assertEq(Booted.log.contains("booted"), true)
+    assertEq("${app.make::<Greeter>().word} ${GreeterProvider.registered} ${app.make::<Greeter>().word} ${GreeterProvider.registered}", "hi 1 hi 1")
+    assertEq(app.storagePath("logs"), Path.combine(app.basePath, "storage/logs"))
+}
+
+test "migrations, seeders, routes, validation with unique, auth by token, queued job sending mail" {
+    let app = makeApp()
+    assertEq(app.call("migrate"), 0)
+    assertEq(Str.contains(app.output(), "CreateMembers"), true)
+    assertEq(app.call("db:seed"), 0)
+    assertEq(Member.count(), 1)
+    assertEq(api(app, "GET", "/").body(), "home")
+    let bad = api(app, "POST", "/api/members", "{\"name\": \"\", \"email\": \"ada@x.io\", \"password\": \"short\"}")
+    assertEq(bad.statusCode(), 422)
+    assertEq(Str.contains(bad.body(), "The email has already been taken.") && Str.contains(bad.body(), "The name field is required."), true)
+    let ok = api(app, "POST", "/api/members", "{\"name\": \"Bob\", \"email\": \"bob@x.io\", \"password\": \"longenough\"}")
+    assertEq(ok.statusCode(), 201)
+    let q = app.make::<QueueManager>()
+    assertEq(q.size(), 1)
+    let o = new WorkerOptions(); o.stopWhenEmpty = true; o.memoryMb = 0; o.sleep = 0.01
+    q.worker().work("memory", ["default"], o)
+    let sent = (app.make::<MailManager>().mailer("array").transport as ArrayTransport).messages()
+    assertEq("${sent.size()} ${sent[0].subject} ${sent[0].to[0].email} ${Booted.log.contains("welcomed bob@x.io")}", "1 Welcome, Bob bob@x.io true")
+    let users = app.make::<OrbitUserProvider>()
+    let bob = users.retrieveByCredentials({"email": "bob@x.io"})
+    assertEq(users.validateCredentials(bob, {"password": "longenough"}), true)
+    let token = users.issueApiToken(bob)
+    assertEq(api(app, "GET", "/api/me", "", token).body(), "{\"name\":\"Bob\"}")
+    assertEq(api(app, "GET", "/api/me").statusCode(), 401)
+}
+
+test "maintenance mode: down with a secret and allowed IPs, up; /up works while down" {
+    let app = makeApp()
+    assertEq(app.call("down --secret=letmein --retry=30 --message=Upgrading"), 0)
+    let res = api(app, "GET", "/")
+    assertEq("${res.statusCode()} ${res.getHeader("Retry-After")} ${Str.contains(res.body(), "Upgrading")}", "503 30 true")
+    let bypass = app.handle(Request.make("GET", "/letmein"))
+    assertEq(bypass.statusCode(), 302)
+    assertEq(app.isDownForMaintenance(), true)
+    assertEq(app.call("up"), 0)
+    assertEq(api(app, "GET", "/").statusCode(), 200)
+}
+
+test "commands: about, route:list, config:show, schedule:list, key:generate, make:*, queue:*" {
+    let app = makeApp()
+    app.call("about")
+    let about = app.output()
+    assertEq(Str.contains(about, "Testapp") && Str.contains(about, "Queue") && Str.contains(about, "memory"), true)
+    app.call("route:list")
+    assertEq(Str.contains(app.output(), "api/members") && Str.contains(app.output(), "members.store"), true)
+    app.call("config:show app.features")
+    assertEq(Str.contains(app.output(), "app.features.signup") && Str.contains(app.output(), "true"), true)
+    app.call("schedule:list")
+    assertEq(Str.contains(app.output(), "0 * * * *") && Str.contains(app.output(), "inspire"), true)
+    assertEq(app.call("key:generate --show"), 0)
+    assertEq(Str.contains(app.output(), "base64:"), true)
+    assertEq(app.call("make:controller PostController --resource --model=Post"), 0)
+    let ctrl = new File(app.path("app/Http/Controllers/PostController.grav")).read()
+    assertEq(Str.contains(ctrl, "class PostController extends Controller") && Str.contains(ctrl, "fn update(req: Request, post: Post)"), true)
+    assertEq(app.call("make:model Post -m --policy"), 0)
+    assertEq(new File(app.path("app/Models/Post.grav")).exists() && new File(app.path("app/Policies/PostPolicy.grav")).exists() && Dir.list(app.path("database/migrations")).size() == 1, true)
+    assertEq(app.call("make:job SendReport --unique"), 0)
+    assertEq(app.call("make:job SendReport"), 1)                  // already there
+    assertEq(app.call("queue:failed"), 0)
+    assertEq(Str.contains(app.output(), "No failed jobs"), true)
+    assertEq(app.call("inspire"), 0)
+    assertEq(app.call("env"), 0)
+    assertEq(Str.contains(app.output(), "[testing]"), true)
+}
