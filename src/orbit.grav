@@ -1,0 +1,110 @@
+// orbit.grav — where Apogee meets grav-orbit: validation's unique/exists
+// rules count rows through it, auth finds users through a model class, and
+// queued jobs carry models by id (fetched fresh on the worker).
+import "std"
+import "grav-orbit"
+import "apogee-auth"
+import "apogee-validation"
+import "apogee-queue"
+
+namespace apogee {
+
+    // unique:users,email and exists:posts,id, through Orbit's query builder.
+    class OrbitPresenceVerifier implements PresenceVerifier {
+        public connection: string
+        constructor(connection: string = "default") { self.connection = connection; }
+        fn count(table: string, column: string, value: any, excludeId: string, idColumn: string, wheres: HashMap<string, any>) -> long {
+            let q = new TableQuery(table, DB.connection(self.connection));
+            q.where(column, value);
+            if (excludeId != "" && excludeId != "NULL") { q.whereNot(idColumn == "" ? "id" : idColumn, excludeId); }
+            for (k in wheres.keys()) {
+                let v = wheres[k];
+                let text = v == null ? "" : str(v);
+                if (text == "NULL") { q.whereNull(k); }
+                else if (text == "NOT_NULL") { q.whereNotNull(k); }
+                else if (Str.startsWith(text, "!")) { q.whereNot(k, text[1..]); }
+                else { q.where(k, v); }
+            }
+            return q.count();
+        }
+    }
+
+    // Users from an Orbit model class (one that implements Authenticatable).
+    //
+    //   new OrbitUserProvider(reflect(User))              // logs in by "email"
+    class OrbitUserProvider implements UserProvider {
+        public model: ClassInfo
+        public loginField: string
+        // The field that holds an API token's SHA-256 ("" when tokens are not used).
+        public tokenField: string
+        constructor(model: ClassInfo, loginField: string = "email", tokenField: string = "apiToken") {
+            self.model = model; self.loginField = loginField; self.tokenField = tokenField;
+        }
+        private fn query() -> Query<Model> { return new Query<Model>(TableMap.of(self.model)); }
+        fn retrieveById(id: string) -> any { return id == "" ? null : self.query().find(id); }
+        fn retrieveByCredentials(credentials: HashMap<string, any>) -> any {
+            let q = self.query();
+            let filtered = false;
+            for (k in credentials.keys()) {
+                if (k == "password") { continue; }
+                q.where(k, credentials[k]);
+                filtered = true;
+            }
+            return filtered ? q.first() : null;
+        }
+        // Checks the password, and rehashes it when the cost changed since it was made.
+        fn validateCredentials(user: any, credentials: HashMap<string, any>) -> bool {
+            let pw = credentials.getOr("password", null);
+            if (pw == null) { return false; }
+            let stored = (user as Authenticatable).authPassword();
+            if (!Passwords.check(str(pw), stored)) { return false; }
+            if (Passwords.needsRehash(stored)) {
+                let f = ClassInfo.of(user).field("password");
+                if (f != null) { f.set(user, Passwords.make(str(pw))); (user as Model).save(); }
+            }
+            return true;
+        }
+        fn retrieveByToken(id: string, token: string) -> any {
+            let u = self.retrieveById(id);
+            if (u == null) { return null; }
+            let mine = (u as Authenticatable).rememberToken();
+            return mine != "" && Hash.equals(mine, token) ? u : null;
+        }
+        fn updateRememberToken(user: any, token: string) {
+            (user as Authenticatable).setRememberToken(token);
+            (user as Model).save();
+        }
+        fn retrieveByApiToken(tokenHash: string) -> any {
+            if (self.tokenField == "" || self.model.field(self.tokenField) == null) { return null; }
+            return self.query().where(self.tokenField, tokenHash).first();
+        }
+        // Gives `user` a new API token: the plain token (shown once); its SHA-256 is saved.
+        fn issueApiToken(user: any) -> string {
+            let token = Hash.randomToken(32);
+            let f = ClassInfo.of(user).field(self.tokenField);
+            if (f == null) { throw new StateError(self.model.name + " has no " + self.tokenField + " field for API tokens"); }
+            f.set(user, Hash.sha256(token));
+            (user as Model).save();
+            return token;
+        }
+    }
+
+    class OrbitBridge {
+        // Queued jobs carry Orbit models by id, and fetch them fresh on the worker.
+        static fn install() {
+            JobCodec.entityKey = fn(v: any) -> string {
+                if (!(v is Model)) { return ""; }
+                let map = TableMap.of(ClassInfo.of(v));
+                if (map.id == null) { return ""; }
+                let id = map.id.field.get(v);
+                return id == null ? "" : str(id);
+            };
+            JobCodec.entityResolver = fn(cls: string, id: string) -> any {
+                let info = ClassInfo.forName(cls);
+                if (info == null) { return null; }
+                return new Query<Model>(TableMap.of(info)).find(id);
+            };
+            Validator.presence = new OrbitPresenceVerifier();
+        }
+    }
+}
