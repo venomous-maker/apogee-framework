@@ -9,7 +9,7 @@ apogee-validation = { source = "github.com/venomous-maker/apogee-validation", ve
 apogee-session = { source = "github.com/venomous-maker/apogee-session", version = "", commit = "2d3b2f73586461d26a095830bb23772c1d0c0331" }
 apogee-view = { source = "github.com/venomous-maker/apogee-view", version = "", commit = "18ee6d85b9147d86d14c25db356f435ffa3fa9b4" }
 apogee-auth = { source = "github.com/venomous-maker/apogee-auth", version = "", commit = "9c2cecb61e7f1e697cd5dffdc105126a617d0bb9" }
-apogee-queue = { source = "github.com/venomous-maker/apogee-queue", version = "", commit = "603f779509572fa6ca185ebaf5e7dab8c776ce48" }
+apogee-queue = { source = "github.com/venomous-maker/apogee-queue", version = "", commit = "ab649f1003de6fee9ae836ffe4351d318963fd19" }
 apogee-console = { source = "github.com/venomous-maker/apogee-console", version = "", commit = "bdb24bd66da5daf21569cba4c6ccd0d1af0ab101" }
 apogee-scheduler = { source = "github.com/venomous-maker/apogee-scheduler", version = "", commit = "4a353960c992c9ecf1cd15f8cea4536941144ed0" }
 apogee-mail = { source = "github.com/venomous-maker/apogee-mail", version = "", commit = "5a5c5ac308d16292eb50f719dc31608d27a1c97e" }

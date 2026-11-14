@@ -90,6 +90,32 @@ namespace apogee {
         }
     }
 
+    // One database connection per thread: a grav-db connection is for one
+    // thread at a time, and the HTTP server and queue workers run many. Each
+    // thread gets its own on first use and keeps it (server threads are pooled:
+    // a connection per thread, not per request).
+    class ThreadConnections {
+        static bound: HashSet<long> = new HashSet<long>()
+        static lock: Mutex = new Mutex()
+        static open: fn() -> Connection = null
+        static fn ensure() {
+            let f = ThreadConnections.open;
+            if (f == null) { return; }
+            let id = Thread.currentId();
+            ThreadConnections.lock.lock();
+            let has = ThreadConnections.bound.contains(id);
+            if (!has) { ThreadConnections.bound.add(id); }
+            ThreadConnections.lock.unlock();
+            if (!has) { DB.useOnThisThread(f()); }
+        }
+        static fn reset() { ThreadConnections.lock.lock(); ThreadConnections.bound.clear(); ThreadConnections.lock.unlock(); }
+    }
+    // Runs first on every request: the thread's own database connection.
+    class BindThreadConnection implements Middleware {
+        constructor() {}
+        fn handle(req: Request, next: fn(Request) -> Response) -> Response { ThreadConnections.ensure(); return next(req); }
+    }
+
     class OrbitBridge {
         // Queued jobs carry Orbit models by id, and fetch them fresh on the worker.
         static fn install() {

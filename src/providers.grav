@@ -120,7 +120,15 @@ namespace apogee {
             OrbitBridge.install();
         }
         // (each app opens its own default connection: one left from another app may point at another database)
-        fn boot() { DB.connect(DatabaseServiceProvider.open(Config.getString("database.default", "sqlite"))); }
+        fn boot() {
+            let name = Config.getString("database.default", "sqlite");
+            DB.connect(DatabaseServiceProvider.open(name));
+            // (the main thread uses the shared one; every other thread opens its own)
+            ThreadConnections.reset();
+            ThreadConnections.bound.add(Thread.currentId());
+            ThreadConnections.open = fn() -> Connection { return DatabaseServiceProvider.open(name); };
+            Worker.onThreadStart = fn() { ThreadConnections.ensure(); };
+        }
         static fn open(name: string) -> Connection {
             let base = "database.connections." + name + ".";
             let driver = Config.getString(base + "driver", name);
@@ -300,6 +308,7 @@ namespace apogee {
             let c = app.container;
             let r = c.make::<Router>();
             // middleware: aliases, groups, the global maintenance check
+            r.aliasInstance("db-thread", new BindThreadConnection());
             r.aliasInstance("maintenance", new PreventRequestsDuringMaintenance(app));
             r.aliasInstance("session", new StartSession(c.make::<SessionManager>()));
             r.aliasInstance("csrf", new VerifyCsrfToken());
@@ -314,6 +323,7 @@ namespace apogee {
             r.aliasMiddleware("throttle", fn(a: Array<string>) -> Middleware { return new ThrottleRequests(limits, a); });
             r.middlewareGroup("web", ["session", "csrf"]);
             r.middlewareGroup("api", ["throttle:60,1"]);
+            r.use("db-thread");
             r.use("maintenance");
             // (unknown paths go through the middleware too, maintenance first; the app may set its own fallback)
             r.fallback(fn(req: Request) -> Response { throw new HttpException(404); });
