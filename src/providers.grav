@@ -1,0 +1,360 @@
+// providers.grav — the framework's own service providers: each module made
+// from the configuration and bound in the container (a singleton, made on
+// first use), and the modules wired to each other.
+import "std"
+import "apogee-support"
+import "apogee-container"
+import "apogee-config"
+import "apogee-events"
+import "apogee-http"
+import "apogee-routing"
+import "apogee-validation"
+import "apogee-session"
+import "apogee-view"
+import "apogee-auth"
+import "apogee-queue"
+import "apogee-console"
+import "apogee-scheduler"
+import "apogee-mail"
+import "grav-cache"
+import "grav-redis"
+import "grav-orbit"
+import "grav-db"
+import "grav-logger"
+import "orbit.grav"
+import "maintenance.grav"
+import "commands.grav"
+import "generators.grav"
+
+namespace apogee {
+
+    class FrameworkProviders {
+        static fn all() -> Array<ServiceProvider> {
+            return [new LogServiceProvider() as ServiceProvider, new EventServiceProvider(), new CacheServiceProvider(), new DatabaseServiceProvider(),
+                    new QueueServiceProvider(), new ViewServiceProvider(), new MailServiceProvider(), new SessionServiceProvider(),
+                    new AuthServiceProvider(), new RoutingServiceProvider(), new ScheduleServiceProvider(), new ConsoleServiceProvider()];
+        }
+    }
+
+    // Logging channels from logging.*: single, daily, stderr, stack, null.
+    class LogServiceProvider extends ServiceProvider {
+        static made: HashSet<string> = new HashSet<string>()
+        constructor() {}
+        fn register() {
+            let level = logger.parseLevel(Config.getString("logging.level", "debug"), logger.Level.Debug);
+            for (name in Config.getMap("logging.channels").keys()) { LogServiceProvider.channel(name, level); }
+            let def = Config.getString("logging.default", "stack");
+            Logging.useChannel(def);
+            self.app.container.instance::<LogChannel>(Logging.channel(def));
+        }
+        private static fn channel(name: string, level: logger.Level) {
+            let base = "logging.channels." + name + ".";
+            let driver = Config.getString(base + "driver", name);
+            let ch = new LogChannel(name);
+            ch.level = level;
+            if (driver == "single") { LogServiceProvider.ensureDir(Config.getString(base + "path")); ch.addHandler(new StreamHandler(Config.getString(base + "path"))); }
+            else if (driver == "daily") { LogServiceProvider.ensureDir(Config.getString(base + "path")); ch.addHandler(new RotatingFileHandler(Config.getString(base + "path"), Config.getInt(base + "days", 14) as int)); }
+            else if (driver == "stderr") { ch.addHandler(StreamHandler.stderr()); }
+            else if (driver == "null") { ch.addHandler(new NullHandler()); }
+            else if (driver == "stack") {
+                let names = new Array<string>();
+                for (n in Str.split(Config.getString(base + "channels", "single"), ",")) { if (Str.trim(n) != "" && Str.trim(n) != name) { names.push(Str.trim(n)); } }
+                for (n in names) { if (!LogServiceProvider.made.contains(n)) { LogServiceProvider.channel(n, level); } }
+                ch = Logging.stack(names);
+                ch.level = level;
+            }
+            Logging.register(name, ch);
+            LogServiceProvider.made.add(name);
+        }
+        private static fn ensureDir(file: string) { let d = Path.dirname(file); if (d != "" && !Dir.exists(d)) { Dir.create(d); } }
+    }
+
+    class EventServiceProvider extends ServiceProvider {
+        constructor() {}
+        fn register() {
+            let c = self.app.container;
+            c.singleton::<Events>(fn(c: Container) -> Events { return new Events(c); });
+        }
+        // Listener classes found by their handle()'s type; queued ones go to the queue.
+        fn boot() {
+            let events = self.app.container.make::<Events>();
+            events.discover();
+            self.app.container.make::<QueueManager>().queueListenersOf(events);
+        }
+    }
+
+    // cache.default: memory, file, redis or database.
+    class CacheServiceProvider extends ServiceProvider {
+        constructor() {}
+        fn register() {
+            let app = self.app;
+            app.container.singleton::<CacheRepository>(fn(c: Container) -> CacheRepository {
+                let repo = new CacheRepository(CacheServiceProvider.store(app, Config.getString("cache.default", "memory")));
+                Cache.store(repo.store);
+                return repo;
+            });
+        }
+        static fn store(app: Application, name: string) -> CacheStore {
+            if (name == "file") { return new FileCacheStore(Config.getString("cache.stores.file.path")); }
+            if (name == "redis") { return new RedisCacheStore(RedisConnection.open(Config.getString("redis.url")), Config.getString("cache.prefix", "apogee:cache:")); }
+            if (name == "database") { return new OrbitCacheStore(); }
+            return new MemoryCacheStore();
+        }
+    }
+
+    // database.default and its connection (DB.connect), a pool for the queue and
+    // failed jobs, and Orbit wired into validation and queued jobs.
+    class DatabaseServiceProvider extends ServiceProvider {
+        constructor() {}
+        fn register() {
+            let app = self.app;
+            let name = Config.getString("database.default", "sqlite");
+            let connect = fn() -> Connection { return DatabaseServiceProvider.open(name); };
+            app.container.singleton::<Pool>(fn(c: Container) -> Pool { return new Pool(Config.getInt("database.pool", 8) as int, connect); });
+            app.container.singleton::<Migrator>(fn(c: Container) -> Migrator {
+                let m = new Migrator();
+                for (x in app.migrations) { m.add(x); }
+                return m;
+            });
+            OrbitBridge.install();
+        }
+        // (each app opens its own default connection: one left from another app may point at another database)
+        fn boot() { DB.connect(DatabaseServiceProvider.open(Config.getString("database.default", "sqlite"))); }
+        static fn open(name: string) -> Connection {
+            let base = "database.connections." + name + ".";
+            let driver = Config.getString(base + "driver", name);
+            if (driver == "sqlite") {
+                let file = Config.getString(base + "database", "database/database.sqlite");
+                if (file != ":memory:") { let d = Path.dirname(file); if (d != "" && !Dir.exists(d)) { Dir.create(d); } }
+                let c = Sqlite.open(file);
+                c.exec("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON");
+                return c;
+            }
+            if (driver == "mysql") { return MySql.open(Config.getString(base + "url")); }
+            if (driver == "postgres" || driver == "pgsql") { return Postgres.open(Config.getString(base + "url")); }
+            throw new StateError("unknown database driver '" + driver + "'");
+        }
+    }
+
+    // queue.default: sync, memory, database or redis; failed jobs in a file or table; batches in the cache.
+    class QueueServiceProvider extends ServiceProvider {
+        constructor() {}
+        fn register() {
+            let app = self.app;
+            app.container.singleton::<QueueManager>(fn(c: Container) -> QueueManager {
+                let q = new QueueManager(c);
+                q.addConnection("memory", new MemoryQueueDriver());
+                q.addConnection("database", new DatabaseQueueDriver(c.make::<Pool>()));
+                let redisUrl = Config.getString("redis.url");
+                if (redisUrl != "") { q.addConnection("redis", RedisQueueDriver.open(redisUrl, 8, "apogee:queues:")); }
+                q.defaultConnection = Config.getString("queue.default", "sync");
+                let failed = Config.getString("queue.failed.driver", "file");
+                if (failed == "database") { let store = new DatabaseFailedJobStore(c.make::<Pool>()); q.failedJobs = store; }
+                else if (failed == "file") {
+                    let path = Config.getString("queue.failed.path");
+                    let d = Path.dirname(path);
+                    if (!Dir.exists(d)) { Dir.create(d); }
+                    q.failedJobs = new FileFailedJobStore(path);
+                }
+                let cache = c.make::<CacheRepository>();
+                q.cache = cache;
+                q.batches = new CacheBatchRepository(cache.store);
+                q.events = c.make::<Events>();
+                return q;
+            });
+        }
+    }
+
+    class ViewServiceProvider extends ServiceProvider {
+        constructor() {}
+        fn register() {
+            let app = self.app;
+            app.container.singleton::<ViewFactory>(fn(c: Container) -> ViewFactory {
+                let paths = new Array<string>();
+                for (p in Str.split(Config.getString("view.paths"), ",")) { paths.push(Str.trim(p)); }
+                let v = new ViewFactory(paths);
+                v.environment = app.environment;
+                v.checkForChanges = !app.isProduction();
+                v.share("appName", app.name);
+                v.share("appUrl", app.url);
+                let router = c.make::<Router>();
+                v.urlFor = fn(name: string, p: HashMap<string, any>) -> string { return router.url(name, p); };
+                return v;
+            });
+        }
+    }
+
+    // mail.default: log, smtp, array or sendmail; notifications over them.
+    class MailServiceProvider extends ServiceProvider {
+        constructor() {}
+        fn register() {
+            let app = self.app;
+            app.container.singleton::<MailManager>(fn(c: Container) -> MailManager {
+                let manager = new MailManager();
+                let logPath = Config.getString("mail.log.path");
+                let transports: Array<Pair<string, MailTransport>> = [new Pair<string, MailTransport>("log", new LogTransport(logPath)),
+                    new Pair<string, MailTransport>("smtp", SmtpTransport.fromUrl(Config.getString("mail.smtp.url"))),
+                    new Pair<string, MailTransport>("array", new ArrayTransport()),
+                    new Pair<string, MailTransport>("sendmail", new SendmailTransport())];
+                let d = Path.dirname(logPath);
+                if (!Dir.exists(d)) { Dir.create(d); }
+                for (t in transports) {
+                    let m = new Mailer(t.first, t.second, c);
+                    m.alwaysFrom = new Address(Config.getString("mail.from.address"), Config.getString("mail.from.name"));
+                    let to = Config.getString("mail.always_to");
+                    if (to != "") { m.alwaysTo = Address.parse(to); }
+                    m.theme.appName = app.name;
+                    m.theme.appUrl = app.url;
+                    m.views = c.make::<ViewFactory>();
+                    m.events = c.make::<Events>();
+                    m.queueManager = c.make::<QueueManager>();
+                    manager.add(m);
+                }
+                manager.defaultMailer = Config.getString("mail.default", "log");
+                return manager;
+            });
+            app.container.singleton::<Mailer>(fn(c: Container) -> Mailer { return c.make::<MailManager>().mailer(); });
+            app.container.singleton::<NotificationSender>(fn(c: Container) -> NotificationSender {
+                let n = new NotificationSender();
+                n.mailer = c.make::<Mailer>();
+                n.queueManager = c.make::<QueueManager>();
+                n.events = c.make::<Events>();
+                let log = c.make::<LogChannel>();
+                n.log = fn(line: string) { log.info(line); };
+                return n;
+            });
+        }
+    }
+
+    // session.driver: file, memory or redis.
+    class SessionServiceProvider extends ServiceProvider {
+        constructor() {}
+        fn register() {
+            let app = self.app;
+            app.container.singleton::<SessionManager>(fn(c: Container) -> SessionManager {
+                let driver = Config.getString("session.driver", "file");
+                let store: SessionStore = null;
+                if (driver == "memory" || driver == "array") { store = new MemorySessionStore(); }
+                else if (driver == "redis") { store = new RedisSessionStore(RedisConnection.open(Config.getString("redis.url")), "apogee:session:"); }
+                else { store = new FileSessionStore(Config.getString("session.path")); }
+                let m = new SessionManager(store, app.key == "" ? "apogee-insecure-key" : app.key);
+                m.lifetimeMinutes = Config.getInt("session.lifetime", 120) as int;
+                m.cookieName = Config.getString("session.cookie", "apogee_session");
+                return m;
+            });
+        }
+    }
+
+    // A gate with the app's policies, and the web (session) and api (token) guards over auth.model.
+    class AuthServiceProvider extends ServiceProvider {
+        constructor() {}
+        fn register() {
+            let app = self.app;
+            Passwords.iterations = Config.getInt("auth.password_iterations", 600000);
+            app.container.singleton::<Gate>(fn(c: Container) -> Gate { let g = new Gate(); g.discoverPolicies(); return g; });
+            app.container.singleton::<AuthManager>(fn(c: Container) -> AuthManager {
+                let auth = new AuthManager(c.make::<Gate>());
+                auth.loginUrl = Config.getString("auth.login", "/login");
+                let modelName = Config.getString("auth.model");
+                if (modelName != "") {
+                    let cls = ClassInfo.forName(modelName);
+                    if (cls == null) { throw new StateError("auth.model '" + modelName + "' is not a class in this program"); }
+                    let users = new OrbitUserProvider(cls);
+                    c.instance::<OrbitUserProvider>(users);
+                    auth.addGuard(new SessionGuard("web", users, new CookieJar(app.key)));
+                    auth.addGuard(new TokenGuard("api", users));
+                    auth.addGuard(new BasicGuard("basic", users));
+                }
+                return auth;
+            });
+        }
+    }
+
+    // The router (web and api routes, the middleware), and the HTTP kernel.
+    class RoutingServiceProvider extends ServiceProvider {
+        constructor() {}
+        fn register() {
+            let app = self.app;
+            app.container.singleton::<Router>(fn(c: Container) -> Router {
+                let r = new Router(c);
+                r.signingKey = app.key;
+                return r;
+            });
+            app.container.singleton::<HttpKernel>(fn(c: Container) -> HttpKernel {
+                let k = new HttpKernel(c.make::<Router>());
+                k.debug = app.debug;
+                let log = c.make::<LogChannel>();
+                k.report(fn(e: Exception, req: Request) { log.error(req.method() + " " + req.path(), e); });
+                let queue = c.make::<QueueManager>();
+                k.after(fn(req: Request, res: Response) { queue.runAfterResponse(); });
+                if (app.exceptionSetup != null) { app.exceptionSetup(k); }
+                return k;
+            });
+        }
+        fn boot() {
+            let app = self.app;
+            let c = app.container;
+            let r = c.make::<Router>();
+            // middleware: aliases, groups, the global maintenance check
+            r.aliasInstance("maintenance", new PreventRequestsDuringMaintenance(app));
+            r.aliasInstance("session", new StartSession(c.make::<SessionManager>()));
+            r.aliasInstance("csrf", new VerifyCsrfToken());
+            let auth = c.make::<AuthManager>();
+            r.aliasMiddleware("auth", fn(a: Array<string>) -> Middleware { return new Authenticate(auth, a); });
+            r.aliasInstance("guest", new RedirectIfAuthenticated(auth, Config.getString("auth.home", "/home")));
+            r.aliasMiddleware("can", fn(a: Array<string>) -> Middleware { return new Authorize(auth, a); });
+            let limits = new apogee.RateLimiter();
+            c.instance::<apogee.RateLimiter>(limits);
+            r.aliasMiddleware("throttle", fn(a: Array<string>) -> Middleware { return new ThrottleRequests(limits, a); });
+            r.middlewareGroup("web", ["session", "csrf"]);
+            r.middlewareGroup("api", ["throttle:60,1"]);
+            r.use("maintenance");
+            // (unknown paths go through the middleware too, maintenance first; the app may set its own fallback)
+            r.fallback(fn(req: Request) -> Response { throw new HttpException(404); });
+            if (app.middlewareSetup != null) { app.middlewareSetup(new MiddlewareSetup(app, r)); }
+            if (app.webRoutes != null) { let web = app.webRoutes; r.middleware(["web"]).group(fn(g: Router) { web(g); }); }
+            if (app.apiRoutes != null) { let api = app.apiRoutes; r.prefix(app.apiPrefix).name("api.").middleware(["api"]).group(fn(g: Router) { api(g); }); }
+            r.discover();
+        }
+    }
+
+    class ScheduleServiceProvider extends ServiceProvider {
+        constructor() {}
+        fn register() {
+            let app = self.app;
+            app.container.singleton::<Schedule>(fn(c: Container) -> Schedule {
+                let s = new Schedule(c.make::<CacheRepository>());
+                s.timezone = app.timezone;
+                s.environment = app.environment;
+                s.queue = c.make::<QueueManager>();
+                s.events = c.make::<Events>();
+                s.maintenance = fn() -> bool { return app.isDownForMaintenance(); };
+                let console = c.make::<ConsoleKernel>();
+                s.commands = fn(line: string) -> int { let code = console.call(line); s.lastCommandOutput = console.output(); return code; };
+                if (app.scheduleSetup != null) { app.scheduleSetup(s); }
+                return s;
+            });
+        }
+    }
+
+    class ConsoleServiceProvider extends ServiceProvider {
+        constructor() {}
+        fn register() {
+            let app = self.app;
+            app.container.singleton::<ConsoleKernel>(fn(c: Container) -> ConsoleKernel {
+                let k = new ConsoleKernel(c);
+                k.name = app.name;
+                k.version = app.version;
+                k.binary = "./" + Path.basename(app.basePath);
+                k.cache = c.make::<CacheRepository>();
+                k.events = c.make::<Events>();
+                FrameworkCommands.register(k);
+                registerScheduleCommands(k);
+                Generators.register(k);
+                k.discover();
+                if (app.commandSetup != null) { app.commandSetup(k); }
+                return k;
+            });
+        }
+    }
+}
