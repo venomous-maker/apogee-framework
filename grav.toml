@@ -3,9 +3,9 @@ lib = "src/all.grav"
 paths = ["src"]
 
 [dependencies]
-apogee-support = { path = "../apogee-support" }
+apogee-support = "github.com/venomous-maker/apogee-support"
 apogee-container = "github.com/venomous-maker/apogee-container"
-apogee-config = { path = "../apogee-config" }
+apogee-config = "github.com/venomous-maker/apogee-config"
 apogee-events = "github.com/venomous-maker/apogee-events"
 apogee-http = "github.com/venomous-maker/apogee-http"
 apogee-routing = "github.com/venomous-maker/apogee-routing"
@@ -13,11 +13,11 @@ apogee-validation = "github.com/venomous-maker/apogee-validation"
 apogee-session = "github.com/venomous-maker/apogee-session"
 apogee-view = "github.com/venomous-maker/apogee-view"
 apogee-auth = "github.com/venomous-maker/apogee-auth"
-apogee-queue = { path = "../apogee-queue" }
-apogee-console = { path = "../apogee-console" }
-apogee-scheduler = { path = "../apogee-scheduler" }
-apogee-mail = { path = "../apogee-mail" }
-grav-cache = { path = "../grav-cache" }
+apogee-queue = "github.com/venomous-maker/apogee-queue"
+apogee-console = "github.com/venomous-maker/apogee-console"
+apogee-scheduler = "github.com/venomous-maker/apogee-scheduler"
+apogee-mail = "github.com/venomous-maker/apogee-mail"
+grav-cache = "github.com/venomous-maker/grav-cache"
 grav-redis = "github.com/venomous-maker/grav-redis"
 grav-orbit = "github.com/venomous-maker/grav-orbit"
 grav-db = "github.com/venomous-maker/grav-db"
