@@ -1,0 +1,147 @@
+// generators.grav — make:* commands: a new class from a stub, in its usual
+// folder (app/Http/Controllers, app/Jobs, …), never over an existing file
+// unless --force.
+//
+//   ./app make:controller PostController --resource
+//   ./app make:model Post -m -c --policy
+//   ./app make:job SendWelcome --unique
+import "std"
+import "apogee-support"
+import "apogee-console"
+
+namespace apogee {
+
+    class Generators {
+        static fn register(k: ConsoleKernel) {
+            let kinds: Array<Array<string>> = [
+                ["command", "Console/Commands", "A console command"], ["controller", "Http/Controllers", "A controller"],
+                ["middleware", "Http/Middleware", "An HTTP middleware"], ["request", "Http/Requests", "A form request"],
+                ["resource", "Http/Resources", "An API resource"], ["model", "Models", "An Orbit model"],
+                ["job", "Jobs", "A queued job"], ["event", "Events", "An event"], ["listener", "Listeners", "An event listener"],
+                ["mail", "Mail", "A mailable"], ["notification", "Notifications", "A notification"], ["policy", "Policies", "A policy"],
+                ["provider", "Providers", "A service provider"], ["rule", "Rules", "A validation rule"],
+                ["migration", "database/migrations", "A migration"], ["seeder", "database/seeders", "A seeder"],
+                ["factory", "database/factories", "A model factory"], ["test", "tests", "A test file"]];
+            for (kind in kinds) {
+                let name = kind[0];
+                let dir = kind[1];
+                k.command("make:" + name + " {name : The class name} {--force : Overwrite the file} " + Generators.extraOptions(name),
+                    fn(c: ClosureCommand) -> int { return Generators.make(c, name, dir); }).describe("Create " + Str.lower(kind[2][..1]) + kind[2][1..]);
+            }
+        }
+        private static fn extraOptions(kind: string) -> string {
+            if (kind == "controller") { return "{--resource : With the resource actions} {--api : Without create and edit} {--invokable : One __invoke action} {--model= : The model it works with}"; }
+            if (kind == "model") { return "{--m|migration : And a migration} {--c|controller : And a resource controller} {--policy : And a policy} {--f|factory : And a factory} {--s|seed : And a seeder} {--a|all : All of them}"; }
+            if (kind == "listener") { return "{--event= : The event it handles} {--queued : Run it on the queue}"; }
+            if (kind == "job") { return "{--unique : A unique job} {--sync : Not queued (dispatchSync)}"; }
+            if (kind == "mail" || kind == "notification") { return "{--markdown : A Markdown body}"; }
+            if (kind == "migration") { return "{--create= : The table it creates} {--table= : The table it changes}"; }
+            if (kind == "policy") { return "{--model= : The model it guards}"; }
+            if (kind == "command") { return "{--command= : Its signature's name (app:send-mail)}"; }
+            return "";
+        }
+        // Writes the file; 0, or 1 when it exists (without --force).
+        static fn make(c: ClosureCommand, kind: string, dir: string) -> int {
+            let raw = c.argument("name");
+            let cls = Text.studly(Text.afterLast(Str.replace(raw, "\\", "/"), "/"));
+            let sub = Str.contains(raw, "/") ? "/" + Text.beforeLast(raw, "/") : "";
+            if (kind == "migration") { cls = Text.studly(raw); }
+            let base = Str.startsWith(dir, "database/") || dir == "tests" ? dir : "app/" + dir;
+            let file = base + sub + "/" + (kind == "migration" ? Moment.now().format("Y_m_d_His") + "_" + Text.snake(raw) : cls) + ".grav";
+            let path = Path.combine(c.kernel.container.make::<Application>().basePath, file);
+            if (new File(path).exists() && !c.flag("force")) { c.output.errorBlock(Text.headline(kind) + " [" + file + "] already exists."); return 1; }
+            let d = Path.dirname(path);
+            if (!Dir.exists(d)) { Dir.create(d); }
+            new File(path).write(Stubs.render(kind, cls, c));
+            c.output.infoBlock(Text.headline(kind) + " [" + file + "] created successfully.");
+            if (kind == "model") {
+                let all = c.flag("all");
+                let table = Text.plural(Text.snake(cls));
+                if (all || c.flag("migration")) { c.call("make:migration create_" + table + "_table --create=" + table); }
+                if (all || c.flag("controller")) { c.call("make:controller " + cls + "Controller --resource --model=" + cls); }
+                if (all || c.flag("policy")) { c.call("make:policy " + cls + "Policy --model=" + cls); }
+                if (all || c.flag("factory")) { c.call("make:factory " + cls + "Factory"); }
+                if (all || c.flag("seed")) { c.call("make:seeder " + cls + "Seeder"); }
+            }
+            return 0;
+        }
+    }
+
+    // The text of each kind of file.
+    class Stubs {
+        static fn render(kind: string, cls: string, c: ClosureCommand) -> string {
+            let head = "import \"std\"\nimport \"apogee-framework\"\n\nnamespace app {\n\n";
+            let tail = "}\n";
+            let body = "";
+            if (kind == "command") {
+                let sig = c.option("command") != "" ? c.option("command") : "app:" + Text.kebab(Text.chopEnd(cls, "Command"));
+                body = "    class " + cls + " extends ConsoleCommand {\n        constructor() {}\n        fn signature() -> string { return \"" + sig + " {--force : Do it without asking}\"; }\n" +
+                       "        fn description() -> string { return \"Command description\"; }\n        fn handle() -> int {\n            self.info(\"Done.\");\n            return 0;\n        }\n    }\n";
+            } else if (kind == "controller") {
+                let model = c.option("model");
+                body = "    class " + cls + " extends Controller {\n        constructor() {}\n";
+                if (c.flag("invokable")) { body = body + "        fn __invoke(req: Request) -> Response { return Response.text(\"ok\"); }\n"; }
+                else if (c.flag("resource") || c.flag("api") || model != "") {
+                    let m = model == "" ? "id: string" : Text.camel(model) + ": " + model;
+                    body = body + "        fn index(req: Request) -> any { return []; }\n";
+                    if (!c.flag("api")) { body = body + "        fn create(req: Request) -> any { return \"\"; }\n"; }
+                    body = body + "        fn store(req: Request) -> any { return Response.created({}); }\n        fn show(req: Request, " + m + ") -> any { return {}; }\n";
+                    if (!c.flag("api")) { body = body + "        fn edit(req: Request, " + m + ") -> any { return \"\"; }\n"; }
+                    body = body + "        fn update(req: Request, " + m + ") -> any { return {}; }\n        fn destroy(req: Request, " + m + ") -> any { return Response.noContent(); }\n";
+                } else { body = body + "        fn show(req: Request) -> Response { return Response.text(\"ok\"); }\n"; }
+                body = body + "    }\n";
+            } else if (kind == "middleware") {
+                body = "    class " + cls + " implements Middleware {\n        constructor() {}\n        fn handle(req: Request, next: fn(Request) -> Response) -> Response {\n            return next(req);\n        }\n    }\n";
+            } else if (kind == "request") {
+                body = "    class " + cls + " extends FormRequest {\n        constructor() {}\n        fn authorize() -> bool { return true; }\n        fn rules() -> HashMap<string, any> {\n            return {\"name\": \"required|string|max:255\"};\n        }\n    }\n";
+            } else if (kind == "resource") {
+                body = "    class " + cls + " extends JsonResource {\n        fn toArray(req: Request) -> HashMap<string, any> {\n            return {\"id\": self.get(\"id\")};\n        }\n    }\n";
+            } else if (kind == "model") {
+                body = "    class " + cls + " extends Model {\n        public id: long = 0\n        public createdAt: DateTime? = null\n        public updatedAt: DateTime? = null\n        constructor() {}\n    }\n";
+            } else if (kind == "job") {
+                body = "    class " + cls + " extends Job {\n        constructor() { self.tries = 3; self.backoff = [10, 60]; }\n" +
+                       (c.flag("unique") ? "        fn uniqueId() -> string { return \"" + Text.kebab(cls) + "\"; }\n" : "") +
+                       "        fn handle() {\n        }\n        fn failed(e: Exception) {\n        }\n    }\n";
+            } else if (kind == "event") {
+                body = "    @Event class " + cls + " {\n        constructor() {}\n    }\n";
+            } else if (kind == "listener") {
+                let ev = c.option("event") != "" ? c.option("event") : "Event";
+                body = "    class " + cls + " extends Listener {\n        constructor() {}\n" + (c.flag("queued") ? "        fn shouldQueue() -> bool { return true; }\n" : "") +
+                       "        fn handle(e: " + ev + ") {\n        }\n    }\n";
+            } else if (kind == "mail") {
+                body = "    class " + cls + " extends Mailable {\n        constructor() {}\n        fn build() {\n            self.subject(\"" + Text.headline(cls) + "\")" +
+                       (c.flag("markdown") ? "\n                .markdown(\"# " + Text.headline(cls) + "\\n\\nThe body of your message.\\n\\n@button(" + "https://example.com" + ")Button Text@endbutton\")" : "\n                .view(\"mail." + Text.snake(cls) + "\")") +
+                       ";\n        }\n    }\n";
+            } else if (kind == "notification") {
+                body = "    class " + cls + " extends Notification {\n        constructor() {}\n        fn via(n: Notifiable) -> Array<string> { return [\"mail\"]; }\n" +
+                       "        fn toMail(n: Notifiable) -> MailMessage {\n            return new MailMessage().line(\"The introduction to the notification.\").action(\"Notification Action\", \"https://example.com\").line(\"Thank you for using our application!\");\n        }\n" +
+                       "        fn toArray(n: Notifiable) -> HashMap<string, any> { return new HashMap<string, any>(); }\n    }\n";
+            } else if (kind == "policy") {
+                let model = c.option("model");
+                let arg = model == "" ? "" : ", " + Text.camel(model) + ": " + model;
+                body = "    class " + cls + " extends Policy {\n        constructor() {}\n        fn viewAny(user: User) -> bool { return true; }\n        fn view(user: User" + arg + ") -> bool { return true; }\n" +
+                       "        fn create(user: User) -> bool { return true; }\n        fn update(user: User" + arg + ") -> bool { return true; }\n        fn delete(user: User" + arg + ") -> bool { return true; }\n    }\n";
+            } else if (kind == "provider") {
+                body = "    class " + cls + " extends ServiceProvider {\n        constructor() {}\n        fn register() {\n        }\n        fn boot() {\n        }\n    }\n";
+            } else if (kind == "rule") {
+                body = "    // A rule for Rule.check(...): \"\" when the value passes, else the message (:attribute is the field's name).\n" +
+                       "    class " + cls + " {\n        static fn check(attribute: string, value: any) -> string {\n            return value == null ? \"The :attribute is invalid.\" : \"\";\n        }\n    }\n";
+            } else if (kind == "migration") {
+                let create = c.option("create");
+                let table = c.option("table");
+                let up = create != "" ? "        Schema.create(\"" + create + "\", fn(t: Blueprint) {\n            t.id()\n            t.timestamps()\n        })\n"
+                       : (table != "" ? "        Schema.table(\"" + table + "\", fn(t: Blueprint) {\n        })\n" : "");
+                let down = create != "" ? "        Schema.dropIfExists(\"" + create + "\")\n" : "";
+                body = "    class " + cls + " extends Migration {\n        constructor() {}\n        fn up() {\n" + up + "        }\n        fn down() {\n" + down + "        }\n    }\n";
+            } else if (kind == "seeder") {
+                body = "    class " + cls + " extends Seeder {\n        constructor() {}\n        fn run() {\n        }\n    }\n";
+            } else if (kind == "factory") {
+                let model = Text.chopEnd(cls, "Factory");
+                body = "    fn " + Text.camel(cls) + "() -> Factory<" + model + "> {\n        return new Factory<" + model + ">(fn(f: Fake) -> HashMap<string, any> {\n            return fields(\"name\", f.name())\n        })\n    }\n";
+            } else if (kind == "test") {
+                return "import \"std\"\nimport \"apogee-framework\"\nimport \"../app/all.grav\"\nuse app.*\n\ntest \"" + Text.headline(cls) + "\" {\n    assertEq(1 + 1, 2)\n}\n";
+            }
+            return head + body + tail;
+        }
+    }
+}
