@@ -107,12 +107,42 @@ singleton made on first use:
 
 | | |
 |---|---|
-| App | `about [--json]`, `env`, `key:generate [--show]`, `config:show [key]`, `route:list [--method --name --path --json]`, `serve [--host --port]`, `down [--secret --with-secret --retry --refresh --status --message --allow]`, `up`, `inspire` |
+| App | `about [--json]`, `env`, `key:generate [--show]`, `config:show [key]`, `route:list [--method --name --path --json]`, `serve [--host --port --workers]`, `down [--secret --with-secret --retry --refresh --status --message --allow]`, `up`, `inspire` |
 | Database | `migrate [--seed]`, `migrate:status`, `migrate:rollback [--step]`, `migrate:reset`, `migrate:refresh [--seed]`, `migrate:fresh [--seed]`, `db:seed [--class]` (each asks first in production unless `--force`) |
 | Queue | `queue:work [connection] [--queue=high,default --tries --timeout --sleep --backoff --max-jobs --max-time --memory --rest --threads --stop-when-empty --once]`, `queue:failed`, `queue:retry id… / --all`, `queue:forget`, `queue:flush [--hours]`, `queue:restart`, `queue:clear`, `queue:monitor queues [--max]` |
 | Schedule | `schedule:run`, `schedule:work`, `schedule:list`, `schedule:test`, `schedule:interrupt`, `schedule:clear-cache` |
 | Other | `cache:clear`, `view:clear`, `mail:test to [--mailer]` |
 | Generators | `make:command`, `controller [--resource --api --invokable --model]`, `middleware`, `request`, `resource`, `model [-m -c -f -s --policy -a]`, `job [--unique]`, `event`, `listener [--event --queued]`, `mail [--markdown]`, `notification`, `policy [--model]`, `provider`, `rule`, `migration [--create --table]`, `seeder`, `factory`, `test` |
+
+## Serving
+
+`./app serve` runs the standard library's HTTP server: one event-loop thread
+per CPU, with every connection kept alive. Out of the box it takes as many
+connections at once as the process may open files for: it raises the soft
+descriptor limit to the hard one. An idle connection costs about 1 KB, so
+50,000 at once fit in about 60 MB. `config/http.json` tunes it:
+
+```json
+{
+    "host": "*", "port": 8000,
+    "workers": 0,
+    "max_connections": 0,
+    "idle_timeout_ms": 15000,
+    "header_timeout_ms": 20000,
+    "max_body_bytes": 10485760,
+    "max_requests_per_connection": 0,
+    "compress": false
+}
+```
+
+`workers` is the number of event-loop threads (0: one per CPU). Raise it when
+handlers wait on slow services, since a handler runs on its connection's loop.
+`max_connections` 0 means "as many as the descriptor limit allows"; more get a
+503. For a burst of thousands of new connections at once, the kernel's accept
+queue (`net.core.somaxconn`, often 4096) may also want raising.
+
+Build the server with `grav build --release` for production. It drops the
+stack-trace bookkeeping and serves about a third more requests a second.
 
 ## Maintenance mode
 

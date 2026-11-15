@@ -3,6 +3,7 @@
 // :reset, :refresh, :fresh), db:seed, queue:work/failed/retry/forget/flush/
 // restart/clear/monitor, cache:clear, view:clear, mail:test, inspire.
 import "std"
+import "std/net"
 import "apogee-support"
 import "apogee-config"
 import "apogee-routing"
@@ -165,14 +166,33 @@ namespace apogee {
 
     class ServeCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "serve {--host= : The address to listen on} {--port= : The port}"; }
+        fn signature() -> string { return "serve {--host= : The address to listen on} {--port= : The port} {--workers= : Event-loop threads (default: one per CPU)}"; }
         fn description() -> string { return "Serve the app over HTTP"; }
         fn handle(app: Application) -> int {
             let host = self.option("host") != "" ? self.option("host") : Config.getString("http.host", "*");
             let port = self.option("port") != "" ? self.optionInt("port") as int : Config.getInt("http.port", 8000) as int;
+            let kernel = app.http();
+            kernel.router.compile();
+            let s = ServeCommand.server(kernel);
+            if (self.option("workers") != "") { s.workers = self.optionInt("workers") as int; }
             self.output.infoBlock("Server running on [http://" + (host == "*" ? "127.0.0.1" : host) + ":${port}]. Press Ctrl+C to stop.");
-            app.http().serve(port, host);
+            s.listen(host, port);
             return 0;
+        }
+        // The kernel's server, tuned by config/http.json: workers (event-loop
+        // threads; 0 = one per CPU), max_connections (0 = as many as the
+        // descriptor limit allows), idle_timeout_ms, header_timeout_ms,
+        // max_body_bytes, max_requests_per_connection, compress.
+        static fn server(kernel: HttpKernel) -> HttpServer {
+            let s = kernel.server();
+            s.workers = Config.getInt("http.workers", 0) as int;
+            s.maxConnections = Config.getInt("http.max_connections", 0) as int;
+            s.idleTimeoutMs = Config.getInt("http.idle_timeout_ms", s.idleTimeoutMs as long) as int;
+            s.headerTimeoutMs = Config.getInt("http.header_timeout_ms", s.headerTimeoutMs as long) as int;
+            s.maxBodyBytes = Config.getInt("http.max_body_bytes", s.maxBodyBytes as long) as int;
+            s.maxRequestsPerConnection = Config.getInt("http.max_requests_per_connection", 0) as int;
+            if (Config.getBool("http.compress", false)) { s.compress(true); }
+            return s;
         }
     }
 
