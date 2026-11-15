@@ -116,6 +116,8 @@ test "migrations, seeders, routes, validation with unique, auth by token, queued
     let app = makeApp()
     assertEq(app.call("migrate"), 0)
     assertEq(Str.contains(app.output(), "CreateMembers"), true)
+    assertEq(app.call("migrate --isolated"), 0)                      // nothing left, and nobody else migrating
+    assertEq(Str.contains(app.output(), "Nothing to migrate."), true)
     assertEq(app.call("db:seed"), 0)
     assertEq(Member.count(), 1)
     assertEq(api(app, "GET", "/").body(), "home")

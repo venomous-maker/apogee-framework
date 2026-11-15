@@ -112,7 +112,7 @@ singleton made on first use:
 | | |
 |---|---|
 | App | `about [--json]`, `env`, `key:generate [--show]`, `config:show [key]`, `route:list [--method --name --path --json]`, `serve [--host --port --workers]`, `down [--secret --with-secret --retry --refresh --status --message --allow]`, `up`, `inspire` |
-| Database | `migrate [--seed]`, `migrate:status`, `migrate:rollback [--step]`, `migrate:reset`, `migrate:refresh [--seed]`, `migrate:fresh [--seed]`, `db:seed [--class]` (each asks first in production unless `--force`) |
+| Database | `migrate [--seed --isolated]`, `migrate:status`, `migrate:rollback [--step]`, `migrate:reset`, `migrate:refresh [--seed]`, `migrate:fresh [--seed]`, `db:seed [--class]` (each asks first in production unless `--force`) |
 | Queue | `queue:work [connection] [--queue=high,default --tries --timeout --sleep --backoff --max-jobs --max-time --memory --rest --threads --stop-when-empty --once]`, `queue:failed`, `queue:retry id… / --all`, `queue:forget`, `queue:flush [--hours]`, `queue:restart`, `queue:clear`, `queue:monitor queues [--max]` |
 | Schedule | `schedule:run`, `schedule:work`, `schedule:list`, `schedule:test`, `schedule:interrupt`, `schedule:clear-cache` |
 | Other | `cache:clear`, `view:clear`, `mail:test to [--mailer]` |
@@ -147,6 +147,14 @@ queue (`net.core.somaxconn`, often 4096) may also want raising.
 
 Build the server with `grav build --release` for production. It drops the
 stack-trace bookkeeping and serves about a third more requests a second.
+
+## Migrating from several servers
+
+When several servers start at once, each running `./app migrate`, migrations
+still run once. The migrator holds a database lock while it works, so the
+other servers wait for it and then find nothing left to run. With
+`--isolated` (Laravel's flag), a server skips instead of waiting and exits 0.
+A unique index on the migrations table backs the lock up.
 
 ## Maintenance mode
 

@@ -223,11 +223,13 @@ namespace apogee {
     // ── migrations ─────────────────────────────────────────────────────────────
     class MigrateCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "migrate {--force : Run in production without asking} {--seed : Seed afterwards}"; }
+        fn signature() -> string { return "migrate {--force : Run in production without asking} {--seed : Seed afterwards} {--isolated : Skip, instead of waiting, while another server migrates}"; }
         fn description() -> string { return "Run the migrations not run yet"; }
         fn handle(app: Application, m: Migrator) -> int {
             if (!FrameworkCommands.confirmInProduction(self, app)) { return 1; }
-            let ran = m.migrate();
+            // (other servers migrating: wait for them, or with --isolated leave it to them)
+            let ran = self.flag("isolated") ? m.tryMigrate() : m.migrate();
+            if (ran == null) { self.output.infoBlock("Another process is migrating; skipped."); return 0; }
             if (ran.size() == 0) { self.output.infoBlock("Nothing to migrate."); }
             else { self.output.infoBlock("Running migrations."); for (n in ran) { self.output.twoColumn(n, "<fg=green;options=bold>DONE</>"); } self.newLine(); }
             if (self.flag("seed")) { return self.call("db:seed --force"); }
