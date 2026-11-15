@@ -1,4 +1,8 @@
-# apogee-framework
+<p align="center">
+  <img src="docs/apogee-logo.svg" width="128" height="128" alt="Apogee logo">
+</p>
+
+<h1 align="center">Apogee</h1>
 
 The [Apogee](https://github.com/venomous-maker) web framework for
 [Grav](https://github.com/venomous-maker/grav): one `Application` that wires

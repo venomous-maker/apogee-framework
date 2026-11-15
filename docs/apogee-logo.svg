@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Apogee">
+  <title>Apogee</title>
+  <style>
+    .ring { fill: none; stroke: #BE123C; stroke-width: 3.2; stroke-linecap: round; }
+    .trail { fill: none; stroke: #F59E0B; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 0.5 6; }
+    @media (prefers-color-scheme: dark) { .ring { stroke: #FDA4AF; } }
+  </style>
+  <defs>
+    <radialGradient id="planet" cx="0.36" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#FFE4E6"/>
+      <stop offset="0.4" stop-color="#F43F5E"/>
+      <stop offset="1" stop-color="#4C0519"/>
+    </radialGradient>
+    <radialGradient id="sat" cx="0.35" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#FEF3C7"/>
+      <stop offset="1" stop-color="#D97706"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FBBF24" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#FBBF24" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <g transform="rotate(-24 60 60)">
+    <!-- a long orbit, the planet at its lower focus -->
+    <ellipse class="ring" cx="60" cy="60" rx="28" ry="48"/>
+    <circle cx="60" cy="99" r="17" fill="url(#planet)"/>
+    <!-- the orbit's near side, passing in front of the planet -->
+    <path class="ring" d="M43.9 99.3 A28 48 0 0 0 76.1 99.3"/>
+    <!-- the climb, and the satellite at the highest point: the apogee -->
+    <path class="trail" d="M88.6 33.5 A33 53 0 0 0 68.5 8.8"/>
+    <circle cx="60" cy="12" r="13" fill="url(#glow)"/>
+    <circle cx="60" cy="12" r="6.5" fill="url(#sat)"/>
+  </g>
+</svg>
