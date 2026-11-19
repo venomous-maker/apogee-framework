@@ -18,8 +18,7 @@ namespace apogee {
             let q = new TableQuery(table, DB.connection(self.connection));
             q.where(column, value);
             if (excludeId != "" && excludeId != "NULL") { q.whereNot(idColumn == "" ? "id" : idColumn, excludeId); }
-            for (k in wheres.keys()) {
-                let v = wheres[k];
+            for ((k, v) in wheres) {
                 let text = v == null ? "" : str(v);
                 if (text == "NULL") { q.whereNull(k); }
                 else if (text == "NOT_NULL") { q.whereNotNull(k); }
@@ -46,9 +45,9 @@ namespace apogee {
         fn retrieveByCredentials(credentials: HashMap<string, any>) -> any {
             let q = self.query();
             let filtered = false;
-            for (k in credentials.keys()) {
+            for ((k, v) in credentials) {
                 if (k == "password") { continue; }
-                q.where(k, credentials[k]);
+                q.where(k, v);
                 filtered = true;
             }
             return filtered ? q.first() : null;
