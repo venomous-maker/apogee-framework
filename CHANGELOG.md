@@ -6,6 +6,10 @@ compiler versions it builds with.
 
 ## Unreleased
 
+### Requirements
+
+- Uses the 0.2.1 releases of apogee-session, apogee-auth, apogee-queue, apogee-console, apogee-scheduler, apogee-mail, grav-cache, grav-redis and grav-logger.
+
 ## 0.2.0 (2026-11-20)
 
 ### Requirements
