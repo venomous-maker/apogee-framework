@@ -6,6 +6,12 @@ compiler versions it builds with.
 
 ## Unreleased
 
+- The newest releases of the modules: Pennant keeps resolved values a moment
+  (a flag check costs a lookup, not a query), Telescope's N+1 check and Pulse's
+  recording are cheaper.
+- Laid out by `grav fmt` and tidied as grav 1.11's lints suggest; no change in
+  behaviour.
+
 ## 0.3.0 (2026-11-21)
 
 Needs grav 1.10.1 or newer.
