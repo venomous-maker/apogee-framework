@@ -133,4 +133,12 @@ namespace apogee {
             Validator.presence = new OrbitPresenceVerifier();
         }
     }
+
+    // A pool that hands out Orbit's connection for this thread (DB.connection()):
+    // what is written through it joins whatever transaction the thread has open.
+    class OrbitConnectionPool extends Pool {
+        constructor() { super(1, fn() -> Connection { return DB.connection(); }); }
+        fn acquire() -> Connection { return DB.connection(); }
+        fn release(c: Connection) {}
+    }
 }
