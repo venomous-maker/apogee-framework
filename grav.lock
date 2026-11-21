@@ -24,10 +24,10 @@ apogee-sockets = { source = "github.com/venomous-maker/apogee-sockets", version 
 apogee-broadcast = { source = "github.com/venomous-maker/apogee-broadcast", version = "v0.1.1", commit = "6c422ca4111647cf696cf0ae6e401537da1760ea" }
 apogee-queue-dashboard = { source = "github.com/venomous-maker/apogee-queue-dashboard", version = "v0.2.0", commit = "5718544a8a3b8ef0ebf6547c249b9ba2569c3dea" }
 apogee-testing = { source = "github.com/venomous-maker/apogee-testing", version = "v0.1.0", commit = "fa33ed2dd67574a998a7b69c7f0457308599055a" }
-apogee-http-client = { source = "github.com/venomous-maker/apogee-http-client", version = "v0.1.0", commit = "81d3e99aa7ba4dfb0f2d651f9408cfba7e237cd8" }
-apogee-pennant = { source = "github.com/venomous-maker/apogee-pennant", version = "v0.1.0", commit = "71b79a204b46f78f9949fcbae0cf62e9826d7f3b" }
-apogee-scout = { source = "github.com/venomous-maker/apogee-scout", version = "v0.1.0", commit = "dc4c941aa6e57482c49eb8cf34d3af2a30ca78a3" }
-apogee-socialite = { source = "github.com/venomous-maker/apogee-socialite", version = "v0.1.0", commit = "f8bc74032e55dd6a7b432c80d08dee8b260a5a92" }
+apogee-http-client = { source = "github.com/venomous-maker/apogee-http-client", version = "v0.1.1", commit = "00aa8a57cb076d5c971fa885d300172ec7fa3707" }
+apogee-pennant = { source = "github.com/venomous-maker/apogee-pennant", version = "v0.1.1", commit = "3e7e7a76a3cfd2f3b4bd8b6f4bfddd0ea2c34a3f" }
+apogee-scout = { source = "github.com/venomous-maker/apogee-scout", version = "v0.1.1", commit = "3cdc1e97c06be75a5ba484ba0588ddc484b38429" }
+apogee-socialite = { source = "github.com/venomous-maker/apogee-socialite", version = "v0.1.1", commit = "5c6e5e33d36c2382956afc9fc5930e776c7ee303" }
 apogee-storage = { source = "github.com/venomous-maker/apogee-storage", version = "v0.1.2", commit = "5864c5c8f504c5c821a434b10c91d4ef5f93e913" }
-apogee-telescope = { source = "github.com/venomous-maker/apogee-telescope", version = "v0.1.1", commit = "5b0ab2317d6344dcc8d1dba39e4f72c1cc2204e0" }
-apogee-pulse = { source = "github.com/venomous-maker/apogee-pulse", version = "v0.1.1", commit = "658491a9a957c34620614744c1d1a5d093443377" }
+apogee-telescope = { source = "github.com/venomous-maker/apogee-telescope", version = "v0.1.2", commit = "c94cc3ca91a23ea492b24646d2f3007d104a06c0" }
+apogee-pulse = { source = "github.com/venomous-maker/apogee-pulse", version = "v0.1.2", commit = "aecd79de256bcaacc1223acdde0db7e9b58f8b5a" }
