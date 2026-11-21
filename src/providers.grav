@@ -2,7 +2,6 @@
 // from the configuration and bound in the container (a singleton, made on
 // first use), and the modules wired to each other.
 import "std"
-import "apogee-support"
 import "apogee-container"
 import "apogee-config"
 import "apogee-events"

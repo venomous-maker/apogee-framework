@@ -163,7 +163,7 @@ namespace apogee {
         fn register(p: ServiceProvider) -> Application {
             p.app = self;
             let keys = p.provides();
-            if (keys.size() > 0 && !self.booted) {
+            if (!keys.isEmpty() && !self.booted) {
                 // (registered when one of its types is first made)
                 let me = self;
                 for (k in keys) {

@@ -288,7 +288,7 @@ namespace apogee {
                 self.output.infoBlock("Another process is migrating; skipped.")
                 return 0
             }
-            if (ran.size() == 0) { self.output.infoBlock("Nothing to migrate."); }
+            if (ran.isEmpty()) { self.output.infoBlock("Nothing to migrate."); }
             else {
                 self.output.infoBlock("Running migrations.")
                 for (n in ran) { self.output.twoColumn(n, "<fg=green;options=bold>DONE</>"); }
@@ -326,7 +326,7 @@ namespace apogee {
         fn handle(app: Application, m: Migrator) -> int {
             if (!FrameworkCommands.confirmInProduction(self, app)) { return 1; }
             let undone = m.rollback(self.optionInt("step", 1) as int);
-            if (undone.size() == 0) { self.output.infoBlock("Nothing to rollback."); }
+            if (undone.isEmpty()) { self.output.infoBlock("Nothing to rollback."); }
             for (n in undone) { self.output.twoColumn(n, "<fg=yellow;options=bold>ROLLED BACK</>"); }
             return 0;
         }
@@ -447,7 +447,7 @@ namespace apogee {
         }
         fn handle(q: QueueManager) -> int {
             let all = q.failedJobs.all();
-            if (all.size() == 0) {
+            if (all.isEmpty()) {
                 self.output.infoBlock("No failed jobs found.")
                 return 0
             }
@@ -472,7 +472,7 @@ namespace apogee {
                 return 0;
             }
             let ids = self.argumentList("id");
-            if (ids.size() == 0) {
+            if (ids.isEmpty()) {
                 self.error("Give the failed job ids (or --all).")
                 return 1
             }

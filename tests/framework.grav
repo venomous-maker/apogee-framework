@@ -112,7 +112,7 @@ fn makeApp(extraEnv: string = "") -> Application {
     new File(dir + "/config/auth.json").write("{\"model\": \"Member\"}")
     new File(dir + "/config/app.json").write("{\"timezone\": \"Africa/Nairobi\", \"features\": {\"signup\": true}}")
     Passwords.iterations = 1000
-    let app = Application.configure(dir)
+    return Application.configure(dir)
         .withProviders([new GreeterProvider() as ServiceProvider, new AppProvider()])
         .withRouting(fn(r: Router) {
         r.get("/", fn(req: Request) -> Response { return Response.text("home") }).name("home")
@@ -129,7 +129,6 @@ fn makeApp(extraEnv: string = "") -> Application {
         .withMigrations([new CreateMembers() as Migration])
         .withSeeders([new DatabaseSeeder() as Seeder])
         .create()
-    return app
 }
 fn api(app: Application, method: string, path: string, body: string = "", token: string = "") -> Response {
     let req = Request.make(method, path, body, body == "" ? "" : "application/json")
