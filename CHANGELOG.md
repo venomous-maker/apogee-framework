@@ -12,7 +12,8 @@ Needs grav 1.10.1 or newer.
   crypt, storage, lang, broadcast and sockets, pennant, scout, telescope,
   pulse, queue-dashboard, socialite and http-client. The dashboards are open
   locally and gated (`viewTelescope`, `viewPulse`, `viewQueueDashboard`)
-  elsewhere.
+  elsewhere; their routes run with the session and refuse cross-site
+  requests that change something (`same-origin`).
 - Commands: `sockets:serve`, `telescope:prune`, `telescope:clear`, `pulse:clear`.
 - An app key too short to encrypt with leaves `Crypt` unset instead of
   stopping the app.
