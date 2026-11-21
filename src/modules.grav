@@ -51,6 +51,12 @@ namespace apogee {
         static fn usableKey(app: Application) -> string {
             try { new CryptKeys(app.key); return app.key; } catch (x: ValueError) { return ""; }
         }
+        // A dashboard's routes: with the session (so the gate knows who is
+        // signed in) and only same-origin requests changing anything.
+        static fn dashboardRoutes(r: Router, add: fn(Router)) {
+            r.aliasInstance("same-origin", new SameOriginOnly());
+            r.middleware(["session", "same-origin"]).group(fn(g: Router) { add(g); });
+        }
         static fn splitList(s: string) -> Array<string> {
             let out = new Array<string>();
             for (x in Str.split(s, ",")) { if (Str.trim(x) != "") { out.push(Str.trim(x)); } }
@@ -187,7 +193,7 @@ namespace apogee {
             let r = c.make::<Router>();
             r.aliasInstance("telescope", new TelescopeMiddleware());
             r.use("telescope");
-            Telescope.routes(r, Config.getString("telescope.path", "telescope"));
+            ModuleProviders.dashboardRoutes(r, fn(g: Router) { Telescope.routes(g, Config.getString("telescope.path", "telescope")); });
         }
     }
 
@@ -221,7 +227,7 @@ namespace apogee {
             let r = c.make::<Router>();
             r.aliasInstance("pulse", new PulseMiddleware());
             r.use("pulse");
-            Pulse.routes(r, Config.getString("pulse.path", "pulse"));
+            ModuleProviders.dashboardRoutes(r, fn(g: Router) { Pulse.routes(g, Config.getString("pulse.path", "pulse")); });
             Pulse.start();
         }
     }
@@ -242,7 +248,7 @@ namespace apogee {
             c.instance::<QueueDashboard>(dash);
             dash.attach(c.make::<Events>());
             dash.gate(ModuleProviders.gate(app, "viewQueueDashboard"));
-            dash.routes(c.make::<Router>(), Config.getString("queue_dashboard.path", "queue-dashboard"));
+            ModuleProviders.dashboardRoutes(c.make::<Router>(), fn(g: Router) { dash.routes(g, Config.getString("queue_dashboard.path", "queue-dashboard")); });
         }
     }
 
@@ -258,6 +264,34 @@ namespace apogee {
                 for (k in ["tenant", "host", "issuer", "scopes"]) { let v = Config.getString(b + k); if (v != "") { extra.put(k, v); } }
                 Socialite.configure(name, id, Config.getString(b + "client_secret"), Config.getString(b + "redirect"), extra);
             }
+        }
+    }
+
+    // Refuses a request that changes something (not GET, HEAD or OPTIONS) when
+    // its Origin, or else its Referer, names another site: a browser sends one
+    // of them with every cross-site POST, so no other page can press a
+    // dashboard's buttons for a signed-in admin. (Without either it is not a
+    // browser, so not a forgery.)
+    class SameOriginOnly implements Middleware {
+        constructor() {}
+        fn handle(req: Request, next: fn(Request) -> Response) -> Response {
+            let m = req.method();
+            if (m == "GET" || m == "HEAD" || m == "OPTIONS") { return next(req); }
+            let from = req.header("Origin");
+            if (from == "" || from == "null") { from = req.header("Referer"); }
+            if (from != "" && SameOriginOnly.hostOf(from) != Str.lower(req.httpHost())) {
+                return Response.json({"message": "Cross-site request refused."}, 403);
+            }
+            return next(req);
+        }
+        // "https://Example.com:8443/x" -> "example.com:8443"
+        static fn hostOf(url: string) -> string {
+            let s = url;
+            let scheme = Str.indexOf(s, "://");
+            if (scheme >= 0) { s = s[scheme + 3..]; }
+            let slash = Str.indexOf(s, "/");
+            if (slash >= 0) { s = s[..slash]; }
+            return Str.lower(s);
         }
     }
 
