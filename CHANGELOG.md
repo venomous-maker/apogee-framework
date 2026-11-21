@@ -6,6 +6,8 @@ compiler versions it builds with.
 
 ## Unreleased
 
+## 0.3.1 (2026-11-21)
+
 - The newest releases of the modules: Pennant keeps resolved values a moment
   (a flag check costs a lookup, not a query), Telescope's N+1 check and Pulse's
   recording are cheaper.
