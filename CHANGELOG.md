@@ -6,6 +6,17 @@ compiler versions it builds with.
 
 ## Unreleased
 
+Needs grav 1.10.1 or newer.
+
+- Twelve more modules, each wired from the configuration by a provider:
+  crypt, storage, lang, broadcast and sockets, pennant, scout, telescope,
+  pulse, queue-dashboard, socialite and http-client. The dashboards are open
+  locally and gated (`viewTelescope`, `viewPulse`, `viewQueueDashboard`)
+  elsewhere.
+- Commands: `sockets:serve`, `telescope:prune`, `telescope:clear`, `pulse:clear`.
+- An app key too short to encrypt with leaves `Crypt` unset instead of
+  stopping the app.
+
 ## 0.2.2 (2026-11-21)
 
 ### Requirements
