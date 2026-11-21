@@ -13,7 +13,9 @@ namespace apogee {
     // unique:users,email and exists:posts,id, through Orbit's query builder.
     class OrbitPresenceVerifier implements PresenceVerifier {
         public connection: string
-        constructor(connection: string = "default") { self.connection = connection; }
+        constructor(connection: string = "default") {
+            self.connection = connection;
+        }
         fn count(table: string, column: string, value: any, excludeId: string, idColumn: string, wheres: HashMap<string, any>) -> long {
             let q = new TableQuery(table, DB.connection(self.connection));
             q.where(column, value);
@@ -40,8 +42,12 @@ namespace apogee {
         constructor(model: ClassInfo, loginField: string = "email", tokenField: string = "apiToken") {
             self.model = model; self.loginField = loginField; self.tokenField = tokenField;
         }
-        private fn query() -> Query<Model> { return new Query<Model>(TableMap.of(self.model)); }
-        fn retrieveById(id: string) -> any { return id == "" ? null : self.query().find(id); }
+        private fn query() -> Query<Model> {
+            return new Query<Model>(TableMap.of(self.model));
+        }
+        fn retrieveById(id: string) -> any {
+            return id == "" ? null : self.query().find(id);
+        }
         fn retrieveByCredentials(credentials: HashMap<string, any>) -> any {
             let q = self.query();
             let filtered = false;
@@ -60,7 +66,10 @@ namespace apogee {
             if (!Passwords.check(str(pw), stored)) { return false; }
             if (Passwords.needsRehash(stored)) {
                 let f = ClassInfo.of(user).field("password");
-                if (f != null) { f.set(user, Passwords.make(str(pw))); (user as Model).save(); }
+                if (f != null) {
+                    f.set(user, Passwords.make(str(pw)))
+                    (user as Model).save()
+                }
             }
             return true;
         }
@@ -107,12 +116,19 @@ namespace apogee {
             ThreadConnections.lock.unlock();
             if (!has) { DB.useOnThisThread(f()); }
         }
-        static fn reset() { ThreadConnections.lock.lock(); ThreadConnections.bound.clear(); ThreadConnections.lock.unlock(); }
+        static fn reset() {
+            ThreadConnections.lock.lock()
+            ThreadConnections.bound.clear()
+            ThreadConnections.lock.unlock()
+        }
     }
     // Runs first on every request: the thread's own database connection.
     class BindThreadConnection implements Middleware {
         constructor() {}
-        fn handle(req: Request, next: fn(Request) -> Response) -> Response { ThreadConnections.ensure(); return next(req); }
+        fn handle(req: Request, next: fn(Request) -> Response) -> Response {
+            ThreadConnections.ensure()
+            return next(req)
+        }
     }
 
     class OrbitBridge {
@@ -137,8 +153,12 @@ namespace apogee {
     // A pool that hands out Orbit's connection for this thread (DB.connection()):
     // what is written through it joins whatever transaction the thread has open.
     class OrbitConnectionPool extends Pool {
-        constructor() { super(1, fn() -> Connection { return DB.connection(); }); }
-        fn acquire() -> Connection { return DB.connection(); }
+        constructor() {
+            super(1, fn() -> Connection { return DB.connection(); });
+        }
+        fn acquire() -> Connection {
+            return DB.connection();
+        }
         fn release(c: Connection) {}
     }
 }

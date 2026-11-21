@@ -20,10 +20,18 @@ class Member extends Model implements Authenticatable {
     public createdAt: DateTime? = null
     public updatedAt: DateTime? = null
     constructor() {}
-    fn authId() -> string { return "${self.id}" }
-    fn authPassword() -> string { return self.password }
-    fn rememberToken() -> string { return self.rememberTokenValue }
-    fn setRememberToken(t: string) { self.rememberTokenValue = t }
+    fn authId() -> string {
+        return "${self.id}"
+    }
+    fn authPassword() -> string {
+        return self.password
+    }
+    fn rememberToken() -> string {
+        return self.rememberTokenValue
+    }
+    fn setRememberToken(t: string) {
+        self.rememberTokenValue = t
+    }
 }
 class CreateMembers extends Migration {
     constructor() {}
@@ -33,11 +41,15 @@ class CreateMembers extends Migration {
             t.varchar("api_token").nullable(); t.timestamps()
         })
     }
-    fn down() { Schema.dropIfExists("members") }
+    fn down() {
+        Schema.dropIfExists("members")
+    }
 }
 class DatabaseSeeder extends Seeder {
     constructor() {}
-    fn run() { Member.create(fields("name", "Ada", "email", "ada@x.io", "password", Passwords.make("secret123"))) }
+    fn run() {
+        Member.create(fields("name", "Ada", "email", "ada@x.io", "password", Passwords.make("secret123")))
+    }
 }
 
 class Greeter { public word: string = "hello"  constructor() {} }
@@ -45,18 +57,36 @@ class Greeter { public word: string = "hello"  constructor() {} }
 class GreeterProvider extends ServiceProvider {
     static registered: int = 0
     constructor() {}
-    fn provides() -> Array<string> { return [nameof(Greeter)] }
-    fn register() { GreeterProvider.registered += 1; self.app.container.singleton::<Greeter>(fn(c: Container) -> Greeter { let g = new Greeter(); g.word = "hi"; return g }) }
+    fn provides() -> Array<string> {
+        return [nameof(Greeter)]
+    }
+    fn register() {
+        GreeterProvider.registered += 1
+        self.app.container.singleton::<Greeter>(fn(c: Container) -> Greeter {
+            let g = new Greeter()
+            g.word = "hi"
+            return g
+        })
+    }
 }
 class Booted { static log: Array<string> = new Array<string>() }
 class AppProvider extends ServiceProvider {
     constructor() {}
-    fn boot(events: Events) { Booted.log.push("booted"); events.listen::<Welcomed>(fn(e: Welcomed) { Booted.log.push("welcomed " + e.email) }) }
+    fn boot(events: Events) {
+        Booted.log.push("booted")
+        events.listen::<Welcomed>(fn(e: Welcomed) { Booted.log.push("welcomed " + e.email) })
+    }
 }
-@Event class Welcomed { public email: string = ""  constructor(email: string = "") { self.email = email } }
+@Event class Welcomed {
+    public email: string = ""  constructor(email: string = "") {
+        self.email = email
+    }
+}
 class SendWelcome extends Job {
     public memberId: long = 0
-    constructor(memberId: long = 0) { self.memberId = memberId }
+    constructor(memberId: long = 0) {
+        self.memberId = memberId
+    }
     fn handle(mail: Mailer, events: Events) {
         let m = Member.find(self.memberId)
         mail.to(m.email).send(new WelcomeMail(m.name))
@@ -65,8 +95,12 @@ class SendWelcome extends Job {
 }
 class WelcomeMail extends Mailable {
     public name: string = ""
-    constructor(name: string = "") { self.name = name }
-    fn build() { self.subject("Welcome, " + self.name).markdown("# Hi " + self.name + "!\n\nGlad you are here.") }
+    constructor(name: string = "") {
+        self.name = name
+    }
+    fn build() {
+        self.subject("Welcome, " + self.name).markdown("# Hi " + self.name + "!\n\nGlad you are here.")
+    }
 }
 
 fn makeApp(extraEnv: string = "") -> Application {
@@ -81,16 +115,16 @@ fn makeApp(extraEnv: string = "") -> Application {
     let app = Application.configure(dir)
         .withProviders([new GreeterProvider() as ServiceProvider, new AppProvider()])
         .withRouting(fn(r: Router) {
-            r.get("/", fn(req: Request) -> Response { return Response.text("home") }).name("home")
-        }, fn(r: Router) {
-            r.post("/members", fn(req: Request) -> Response {
-                let data = req.validate({"name": "required|string|max:50", "email": ["required", "email", Rule.unique("members", "email")], "password": "required|min:8"})
-                let m = Member.create(fields("name", data["name"], "email", data["email"], "password", Passwords.make(str(data["password"]))))
-                req.make::<QueueManager>().dispatch(new SendWelcome(m.id))
-                return Response.created({"id": m.id})
-            }).name("members.store")
-            r.get("/me", fn(req: Request) -> Response { return Response.json({"name": (req.user as Member).name}) }).middleware(["auth:api"])
-        })
+        r.get("/", fn(req: Request) -> Response { return Response.text("home") }).name("home")
+    }, fn(r: Router) {
+        r.post("/members", fn(req: Request) -> Response {
+            let data = req.validate({"name": "required|string|max:50", "email": ["required", "email", Rule.unique("members", "email")], "password": "required|min:8"})
+            let m = Member.create(fields("name", data["name"], "email", data["email"], "password", Passwords.make(str(data["password"]))))
+            req.make::<QueueManager>().dispatch(new SendWelcome(m.id))
+            return Response.created({"id": m.id})
+        }).name("members.store")
+        r.get("/me", fn(req: Request) -> Response { return Response.json({"name": (req.user as Member).name}) }).middleware(["auth:api"])
+    })
         .withSchedule(fn(s: Schedule) { s.command("inspire").hourly() })
         .withMigrations([new CreateMembers() as Migration])
         .withSeeders([new DatabaseSeeder() as Seeder])

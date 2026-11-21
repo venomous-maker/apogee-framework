@@ -54,8 +54,14 @@ namespace apogee {
             let driver = Config.getString(base + "driver", name);
             let ch = new LogChannel(name);
             ch.level = level;
-            if (driver == "single") { LogServiceProvider.ensureDir(Config.getString(base + "path")); ch.addHandler(new StreamHandler(Config.getString(base + "path"))); }
-            else if (driver == "daily") { LogServiceProvider.ensureDir(Config.getString(base + "path")); ch.addHandler(new RotatingFileHandler(Config.getString(base + "path"), Config.getInt(base + "days", 14) as int)); }
+            if (driver == "single") {
+                LogServiceProvider.ensureDir(Config.getString(base + "path"))
+                ch.addHandler(new StreamHandler(Config.getString(base + "path")))
+            }
+            else if (driver == "daily") {
+                LogServiceProvider.ensureDir(Config.getString(base + "path"))
+                ch.addHandler(new RotatingFileHandler(Config.getString(base + "path"), Config.getInt(base + "days", 14) as int))
+            }
             else if (driver == "stderr") { ch.addHandler(StreamHandler.stderr()); }
             else if (driver == "null") { ch.addHandler(new NullHandler()); }
             else if (driver == "stack") {
@@ -68,7 +74,10 @@ namespace apogee {
             Logging.register(name, ch);
             LogServiceProvider.made.add(name);
         }
-        private static fn ensureDir(file: string) { let d = Path.dirname(file); if (d != "" && !Dir.exists(d)) { Dir.create(d); } }
+        private static fn ensureDir(file: string) {
+            let d = Path.dirname(file)
+            if (d != "" && !Dir.exists(d)) { Dir.create(d); }
+        }
     }
 
     class EventServiceProvider extends ServiceProvider {
@@ -135,7 +144,10 @@ namespace apogee {
             let driver = Config.getString(base + "driver", name);
             if (driver == "sqlite") {
                 let file = Config.getString(base + "database", "database/database.sqlite");
-                if (file != ":memory:") { let d = Path.dirname(file); if (d != "" && !Dir.exists(d)) { Dir.create(d); } }
+                if (file != ":memory:") {
+                    let d = Path.dirname(file)
+                    if (d != "" && !Dir.exists(d)) { Dir.create(d); }
+                }
                 let c = Sqlite.open(file);
                 c.exec("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON");
                 return c;
@@ -162,7 +174,11 @@ namespace apogee {
                 if (redisUrl != "") { q.addConnection("redis", RedisQueueDriver.open(redisUrl, 8, "apogee:queues:")); }
                 q.defaultConnection = Config.getString("queue.default", "sync");
                 let failed = Config.getString("queue.failed.driver", "file");
-                if (failed == "database") { let store = new DatabaseFailedJobStore(c.make::<Pool>()); store.createTable(); q.failedJobs = store; }
+                if (failed == "database") {
+                    let store = new DatabaseFailedJobStore(c.make::<Pool>())
+                    store.createTable()
+                    q.failedJobs = store
+                }
                 else if (failed == "file") {
                     let path = Config.getString("queue.failed.path");
                     let d = Path.dirname(path);
@@ -264,7 +280,11 @@ namespace apogee {
         fn register() {
             let app = self.app;
             Passwords.iterations = Config.getInt("auth.password_iterations", 600000);
-            app.container.singleton::<Gate>(fn(c: Container) -> Gate { let g = new Gate(); g.discoverPolicies(); return g; });
+            app.container.singleton::<Gate>(fn(c: Container) -> Gate {
+                let g = new Gate()
+                g.discoverPolicies()
+                return g
+            });
             app.container.singleton::<AuthManager>(fn(c: Container) -> AuthManager {
                 let auth = new AuthManager(c.make::<Gate>());
                 auth.loginUrl = Config.getString("auth.login", "/login");
@@ -329,8 +349,14 @@ namespace apogee {
             // (unknown paths go through the middleware too, maintenance first; the app may set its own fallback)
             r.fallback(fn(req: Request) -> Response { throw new HttpException(404); });
             if (app.middlewareSetup != null) { app.middlewareSetup(new MiddlewareSetup(app, r)); }
-            if (app.webRoutes != null) { let web = app.webRoutes; r.middleware(["web"]).group(fn(g: Router) { web(g); }); }
-            if (app.apiRoutes != null) { let api = app.apiRoutes; r.prefix(app.apiPrefix).name("api.").middleware(["api"]).group(fn(g: Router) { api(g); }); }
+            if (app.webRoutes != null) {
+                let web = app.webRoutes
+                r.middleware(["web"]).group(fn(g: Router) { web(g); })
+            }
+            if (app.apiRoutes != null) {
+                let api = app.apiRoutes
+                r.prefix(app.apiPrefix).name("api.").middleware(["api"]).group(fn(g: Router) { api(g); })
+            }
             r.discover();
         }
     }
@@ -347,7 +373,11 @@ namespace apogee {
                 s.events = c.make::<Events>();
                 s.maintenance = fn() -> bool { return app.isDownForMaintenance(); };
                 let console = c.make::<ConsoleKernel>();
-                s.commands = fn(line: string) -> int { let code = console.call(line); s.lastCommandOutput = console.output(); return code; };
+                s.commands = fn(line: string) -> int {
+                    let code = console.call(line)
+                    s.lastCommandOutput = console.output()
+                    return code
+                };
                 if (app.scheduleSetup != null) { app.scheduleSetup(s); }
                 return s;
             });

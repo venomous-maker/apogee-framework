@@ -11,9 +11,15 @@ import "application.grav"
 namespace apogee {
 
     class MaintenanceMode {
-        static fn file(app: Application) -> string { return Config.getString("app.maintenance.file", app.storagePath("framework/down")); }
-        static fn active(app: Application) -> bool { return MaintenanceMode.activeAt(MaintenanceMode.file(app)); }
-        static fn activeAt(file: string) -> bool { return new File(file).exists(); }
+        static fn file(app: Application) -> string {
+            return Config.getString("app.maintenance.file", app.storagePath("framework/down"));
+        }
+        static fn active(app: Application) -> bool {
+            return MaintenanceMode.activeAt(MaintenanceMode.file(app));
+        }
+        static fn activeAt(file: string) -> bool {
+            return new File(file).exists();
+        }
         // Turns it on; the secret path that lets a browser in ("" for none).
         static fn down(app: Application, secret: string = "", retry: long = 60, refresh: long = 0, status: int = 503, message: string = "", allow: Array<string> = new Array<string>()) {
             let f = MaintenanceMode.file(app);
@@ -31,8 +37,13 @@ namespace apogee {
             o.set("allow", ips);
             new File(f).write(o.pretty());
         }
-        static fn up(app: Application) -> bool { let f = new File(MaintenanceMode.file(app)); return f.exists() && f.delete(); }
-        static fn data(app: Application) -> JsonValue { return MaintenanceMode.dataAt(MaintenanceMode.file(app)); }
+        static fn up(app: Application) -> bool {
+            let f = new File(MaintenanceMode.file(app))
+            return f.exists() && f.delete()
+        }
+        static fn data(app: Application) -> JsonValue {
+            return MaintenanceMode.dataAt(MaintenanceMode.file(app));
+        }
         static fn dataAt(file: string) -> JsonValue {
             let f = new File(file);
             if (!f.exists()) { return null; }
@@ -50,7 +61,11 @@ namespace apogee {
         public except: Array<string>
         // The flag file, found once (finding it costs more than checking it).
         private file: string
-        constructor(app: Application) { self.app = app; self.except = ["up"]; self.file = MaintenanceMode.file(app); }
+        constructor(app: Application) {
+            self.app = app
+            self.except = ["up"]
+            self.file = MaintenanceMode.file(app)
+        }
         fn handle(req: Request, next: fn(Request) -> Response) -> Response {
             let file = self.file;
             if (!MaintenanceMode.activeAt(file)) { return next(req); }

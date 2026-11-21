@@ -37,7 +37,9 @@ namespace apogee {
         // Everything else, once every provider has registered (override with the services it needs as parameters).
         fn boot() {}
         // The types (nameof) it binds, to register it only when one is first needed ("" list: at once).
-        fn provides() -> Array<string> { return new Array<string>(); }
+        fn provides() -> Array<string> {
+            return new Array<string>();
+        }
     }
 
     class Application {
@@ -88,7 +90,9 @@ namespace apogee {
             self.loadConfiguration();
         }
         // A builder for an app at `basePath` (Laravel 11's bootstrap/app.php).
-        static fn configure(basePath: string = ".") -> ApplicationBuilder { return new ApplicationBuilder(new Application(basePath)); }
+        static fn configure(basePath: string = ".") -> ApplicationBuilder {
+            return new ApplicationBuilder(new Application(basePath));
+        }
 
         // ── configuration ──────────────────────────────────────────────────────
         // .env (and .env.<APP_ENV>, .env.local), then config/*.json, then the defaults for what neither set.
@@ -111,23 +115,49 @@ namespace apogee {
             self.timezone = Config.getString("app.timezone", "UTC");
             Moment.setDefaultTimezone(self.timezone);
         }
-        fn config(path: string, fallback: any = null) -> any { return Config.get(path, fallback); }
+        fn config(path: string, fallback: any = null) -> any {
+            return Config.get(path, fallback);
+        }
 
         // ── paths ──────────────────────────────────────────────────────────────
-        fn path(sub: string = "") -> string { return sub == "" ? self.basePath : Path.combine(self.basePath, sub); }
-        fn configPath(sub: string = "") -> string { return self.path(sub == "" ? "config" : "config/" + sub); }
-        fn storagePath(sub: string = "") -> string { return self.path(sub == "" ? "storage" : "storage/" + sub); }
-        fn resourcePath(sub: string = "") -> string { return self.path(sub == "" ? "resources" : "resources/" + sub); }
-        fn databasePath(sub: string = "") -> string { return self.path(sub == "" ? "database" : "database/" + sub); }
-        fn publicPath(sub: string = "") -> string { return self.path(sub == "" ? "public" : "public/" + sub); }
+        fn path(sub: string = "") -> string {
+            return sub == "" ? self.basePath : Path.combine(self.basePath, sub);
+        }
+        fn configPath(sub: string = "") -> string {
+            return self.path(sub == "" ? "config" : "config/" + sub);
+        }
+        fn storagePath(sub: string = "") -> string {
+            return self.path(sub == "" ? "storage" : "storage/" + sub);
+        }
+        fn resourcePath(sub: string = "") -> string {
+            return self.path(sub == "" ? "resources" : "resources/" + sub);
+        }
+        fn databasePath(sub: string = "") -> string {
+            return self.path(sub == "" ? "database" : "database/" + sub);
+        }
+        fn publicPath(sub: string = "") -> string {
+            return self.path(sub == "" ? "public" : "public/" + sub);
+        }
 
         // ── environment ────────────────────────────────────────────────────────
-        fn isLocal() -> bool { return self.environment == "local"; }
-        fn isProduction() -> bool { return self.environment == "production"; }
-        fn runningUnitTests() -> bool { return self.environment == "testing"; }
-        fn environmentIs(envs: Array<string>) -> bool { return envs.contains(self.environment); }
-        fn runningInConsole() -> bool { return self.consoleRunning; }
-        fn isDownForMaintenance() -> bool { return MaintenanceMode.active(self); }
+        fn isLocal() -> bool {
+            return self.environment == "local";
+        }
+        fn isProduction() -> bool {
+            return self.environment == "production";
+        }
+        fn runningUnitTests() -> bool {
+            return self.environment == "testing";
+        }
+        fn environmentIs(envs: Array<string>) -> bool {
+            return envs.contains(self.environment);
+        }
+        fn runningInConsole() -> bool {
+            return self.consoleRunning;
+        }
+        fn isDownForMaintenance() -> bool {
+            return MaintenanceMode.active(self);
+        }
 
         // ── providers ──────────────────────────────────────────────────────────
         fn register(p: ServiceProvider) -> Application {
@@ -153,14 +183,23 @@ namespace apogee {
             let pid = ClassInfo.of(p).name;
             if (self.loadedDeferred.contains(pid)) { throw new ContainerError(pid + " says it provides " + key + " but did not bind it"); }
             self.loadedDeferred.add(pid);
-            for (k in p.provides()) { self.deferred.remove(k); self.container.forgetNamed(k); }
+            for (k in p.provides()) {
+                self.deferred.remove(k)
+                self.container.forgetNamed(k)
+            }
             self.providers.push(p);
             p.register();
             if (self.booted) { self.bootProvider(p); }
             return self.container.makeNamed(key);
         }
-        fn providerList() -> Array<string> { let out = new Array<string>(); for (p in self.providers) { out.push(ClassInfo.of(p).name); } return out; }
-        fn isBooted() -> bool { return self.booted; }
+        fn providerList() -> Array<string> {
+            let out = new Array<string>()
+            for (p in self.providers) { out.push(ClassInfo.of(p).name); }
+            return out
+        }
+        fn isBooted() -> bool {
+            return self.booted;
+        }
         // Boots every provider (once).
         fn boot() -> Application {
             if (self.booted) { return self; }
@@ -175,20 +214,47 @@ namespace apogee {
             let m = info.method("boot");
             if (m != null && m.paramCount() > 0) { self.container.call(p, "boot"); } else { p.boot(); }
         }
-        fn booting(f: fn(Application)) -> Application { self.bootingHooks.push(f); return self; }
-        fn booted(f: fn(Application)) -> Application { if (self.booted) { f(self); } else { self.bootedHooks.push(f); } return self; }
+        fn booting(f: fn(Application)) -> Application {
+            self.bootingHooks.push(f)
+            return self
+        }
+        fn booted(f: fn(Application)) -> Application {
+            if (self.booted) { f(self); } else { self.bootedHooks.push(f); }
+            return self;
+        }
         // Runs after the app finishes (each request, each command).
-        fn terminating(f: fn()) -> Application { self.terminatingHooks.push(f); return self; }
-        fn terminate() { for (f in self.terminatingHooks) { f(); } }
+        fn terminating(f: fn()) -> Application {
+            self.terminatingHooks.push(f)
+            return self
+        }
+        fn terminate() {
+            for (f in self.terminatingHooks) { f(); }
+        }
 
         // ── kernels ────────────────────────────────────────────────────────────
-        fn make<T>() -> T { return self.container.make::<T>(); }
-        fn http() -> HttpKernel { self.boot(); return self.container.make::<HttpKernel>(); }
-        fn router() -> Router { self.boot(); return self.container.make::<Router>(); }
-        fn console() -> ConsoleKernel { self.boot(); return self.container.make::<ConsoleKernel>(); }
-        fn schedule() -> Schedule { self.boot(); return self.container.make::<Schedule>(); }
+        fn make<T>() -> T {
+            return self.container.make::<T>();
+        }
+        fn http() -> HttpKernel {
+            self.boot()
+            return self.container.make::<HttpKernel>()
+        }
+        fn router() -> Router {
+            self.boot()
+            return self.container.make::<Router>()
+        }
+        fn console() -> ConsoleKernel {
+            self.boot()
+            return self.container.make::<ConsoleKernel>()
+        }
+        fn schedule() -> Schedule {
+            self.boot()
+            return self.container.make::<Schedule>()
+        }
         // A request through the app (tests: no server needed).
-        fn handle(req: Request) -> Response { return self.http().handleRequest(req); }
+        fn handle(req: Request) -> Response {
+            return self.http().handleRequest(req);
+        }
         // Runs a command line (Process.args()): `serve`, `migrate`, `queue:work`, …; the exit code.
         fn run(args: Array<string>) -> int {
             self.consoleRunning = true;
@@ -197,30 +263,59 @@ namespace apogee {
             return code;
         }
         // Runs a command line, keeping its output (tests); the exit code.
-        fn call(commandLine: string, answers: Array<string> = new Array<string>()) -> int { self.consoleRunning = true; return self.console().call(commandLine, answers); }
-        fn output() -> string { return self.console().output(); }
+        fn call(commandLine: string, answers: Array<string> = new Array<string>()) -> int {
+            self.consoleRunning = true
+            return self.console().call(commandLine, answers)
+        }
+        fn output() -> string {
+            return self.console().output();
+        }
     }
 
     // Application.configure(...).with…().create().
     class ApplicationBuilder {
         public app: Application
         private extra: Array<ServiceProvider>
-        constructor(app: Application) { self.app = app; self.extra = new Array<ServiceProvider>(); }
+        constructor(app: Application) {
+            self.app = app
+            self.extra = new Array<ServiceProvider>()
+        }
         // Your providers (after the framework's own).
-        fn withProviders(list: Array<ServiceProvider>) -> ApplicationBuilder { self.extra.addAll(list); return self; }
+        fn withProviders(list: Array<ServiceProvider>) -> ApplicationBuilder {
+            self.extra.addAll(list)
+            return self
+        }
         // Web routes (session, CSRF, …) and API routes (under /api, stateless, throttled).
         fn withRouting(web: fn(Router) = null, api: fn(Router) = null, apiPrefix: string = "api") -> ApplicationBuilder {
             self.app.webRoutes = web; self.app.apiRoutes = api; self.app.apiPrefix = apiPrefix;
             return self;
         }
-        fn withMiddleware(f: fn(MiddlewareSetup)) -> ApplicationBuilder { self.app.middlewareSetup = f; return self; }
-        fn withExceptions(f: fn(HttpKernel)) -> ApplicationBuilder { self.app.exceptionSetup = f; return self; }
-        fn withSchedule(f: fn(Schedule)) -> ApplicationBuilder { self.app.scheduleSetup = f; return self; }
-        fn withCommands(f: fn(ConsoleKernel)) -> ApplicationBuilder { self.app.commandSetup = f; return self; }
+        fn withMiddleware(f: fn(MiddlewareSetup)) -> ApplicationBuilder {
+            self.app.middlewareSetup = f
+            return self
+        }
+        fn withExceptions(f: fn(HttpKernel)) -> ApplicationBuilder {
+            self.app.exceptionSetup = f
+            return self
+        }
+        fn withSchedule(f: fn(Schedule)) -> ApplicationBuilder {
+            self.app.scheduleSetup = f
+            return self
+        }
+        fn withCommands(f: fn(ConsoleKernel)) -> ApplicationBuilder {
+            self.app.commandSetup = f
+            return self
+        }
         // The migrations `migrate` runs, in order.
-        fn withMigrations(list: Array<Migration>) -> ApplicationBuilder { self.app.migrations.addAll(list); return self; }
+        fn withMigrations(list: Array<Migration>) -> ApplicationBuilder {
+            self.app.migrations.addAll(list)
+            return self
+        }
         // Seeders `db:seed` knows (by class name; DatabaseSeeder is the default).
-        fn withSeeders(list: Array<Seeder>) -> ApplicationBuilder { for (s in list) { self.app.seeders.put(ClassInfo.of(s).simpleName(), s); } return self; }
+        fn withSeeders(list: Array<Seeder>) -> ApplicationBuilder {
+            for (s in list) { self.app.seeders.put(ClassInfo.of(s).simpleName(), s); }
+            return self;
+        }
         fn create() -> Application {
             for (p in FrameworkProviders.all()) { self.app.register(p); }
             for (p in ModuleProviders.all()) { self.app.register(p); }
@@ -233,11 +328,26 @@ namespace apogee {
     class MiddlewareSetup {
         public router: Router
         public app: Application
-        constructor(app: Application, router: Router) { self.app = app; self.router = router; }
+        constructor(app: Application, router: Router) {
+            self.app = app
+            self.router = router
+        }
         // Runs on every request.
-        fn append(name: string) -> MiddlewareSetup { self.router.use(name); return self; }
-        fn alias(name: string, m: Middleware) -> MiddlewareSetup { self.router.aliasInstance(name, m); return self; }
-        fn aliasWith(name: string, make: fn(Array<string>) -> Middleware) -> MiddlewareSetup { self.router.aliasMiddleware(name, make); return self; }
-        fn group(name: string, names: Array<string>) -> MiddlewareSetup { self.router.middlewareGroup(name, names); return self; }
+        fn append(name: string) -> MiddlewareSetup {
+            self.router.use(name)
+            return self
+        }
+        fn alias(name: string, m: Middleware) -> MiddlewareSetup {
+            self.router.aliasInstance(name, m)
+            return self
+        }
+        fn aliasWith(name: string, make: fn(Array<string>) -> Middleware) -> MiddlewareSetup {
+            self.router.aliasMiddleware(name, make)
+            return self
+        }
+        fn group(name: string, names: Array<string>) -> MiddlewareSetup {
+            self.router.middlewareGroup(name, names)
+            return self
+        }
     }
 }

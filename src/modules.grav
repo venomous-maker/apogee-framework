@@ -49,7 +49,10 @@ namespace apogee {
         }
         // The app key when it is long enough to sign and encrypt with, else "".
         static fn usableKey(app: Application) -> string {
-            try { new CryptKeys(app.key); return app.key; } catch (x: ValueError) { return ""; }
+            try {
+                new CryptKeys(app.key)
+                return app.key
+            } catch (x: ValueError) { return ""; }
         }
         // A dashboard's routes: with the session (so the gate knows who is
         // signed in) and only same-origin requests changing anything.
@@ -157,7 +160,11 @@ namespace apogee {
         fn boot() {
             let c = self.app.container;
             let store = Config.getString("features.store", "database");
-            if (store == "database") { let s = new DatabaseFeatureStore(ModuleProviders.storePool(self.app)); s.createTable(); Feature.useStore(s); }
+            if (store == "database") {
+                let s = new DatabaseFeatureStore(ModuleProviders.storePool(self.app))
+                s.createTable()
+                Feature.useStore(s)
+            }
             else if (store == "cache") { Feature.useStore(new CacheFeatureStore(c.make::<CacheRepository>().store)); }
             else { Feature.useStore(new MemoryFeatureStore()); }
             c.make::<Router>().aliasMiddleware("feature", fn(a: Array<string>) -> Middleware { return new EnsureFeature(Str.join(a, ",")); });
@@ -170,7 +177,11 @@ namespace apogee {
         fn boot() {
             let driver = Config.getString("scout.driver", "database");
             Scout.prefix = Config.getString("scout.prefix");
-            if (driver == "database") { let e = new DatabaseEngine(ModuleProviders.storePool(self.app)); e.createTables(); Scout.use(e); }
+            if (driver == "database") {
+                let e = new DatabaseEngine(ModuleProviders.storePool(self.app))
+                e.createTables()
+                Scout.use(e)
+            }
             else if (driver == "meilisearch") { Scout.use(new MeilisearchEngine(Config.getString("scout.meilisearch.host"), Config.getString("scout.meilisearch.key"))); }
             else { Scout.use(new MemoryEngine()); }
         }
@@ -182,7 +193,10 @@ namespace apogee {
         fn boot() {
             let app = self.app;
             let c = app.container;
-            if (!Config.getBool("telescope.enabled", false)) { Telescope.recording = false; return; }
+            if (!Config.getBool("telescope.enabled", false)) {
+                Telescope.recording = false
+                return
+            }
             if (Config.getString("telescope.driver", "database") == "database") {
                 let s = new DatabaseTelescopeStore(ModuleProviders.storePool(app));
                 s.createTable();
@@ -212,7 +226,10 @@ namespace apogee {
         fn boot() {
             let app = self.app;
             let c = app.container;
-            if (!Config.getBool("pulse.enabled", false)) { Pulse.recording = false; return; }
+            if (!Config.getBool("pulse.enabled", false)) {
+                Pulse.recording = false
+                return
+            }
             if (Config.getString("pulse.driver", "database") == "database") {
                 // (its own pool: it writes from a background thread, and retries a flush that meets a lock)
                 let s = new DatabasePulseStore(c.make::<Pool>());
@@ -252,7 +269,11 @@ namespace apogee {
             let driver = Config.getString("queue_dashboard.driver", "database");
             let store: DashboardStore = null;
             if (driver == "redis") { store = new RedisDashboardStore(RedisConnection.open(Config.getString("redis.url"))); }
-            else if (driver == "database") { let s = new DatabaseDashboardStore(ModuleProviders.storePool(app)); s.createTables(); store = s; }
+            else if (driver == "database") {
+                let s = new DatabaseDashboardStore(ModuleProviders.storePool(app))
+                s.createTables()
+                store = s
+            }
             else { store = new MemoryDashboardStore(); }
             let dash = new QueueDashboard(c.make::<QueueManager>(), store);
             c.instance::<QueueDashboard>(dash);
@@ -271,7 +292,10 @@ namespace apogee {
                 let id = Config.getString(b + "client_id");
                 if (id == "") { continue; }
                 let extra = new HashMap<string, string>();
-                for (k in ["tenant", "host", "issuer", "scopes"]) { let v = Config.getString(b + k); if (v != "") { extra.put(k, v); } }
+                for (k in ["tenant", "host", "issuer", "scopes"]) {
+                    let v = Config.getString(b + k)
+                    if (v != "") { extra.put(k, v); }
+                }
                 Socialite.configure(name, id, Config.getString(b + "client_secret"), Config.getString(b + "redirect"), extra);
             }
         }
@@ -308,8 +332,12 @@ namespace apogee {
     // ── commands ───────────────────────────────────────────────────────────────
     class SocketsServeCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "sockets:serve {--host= : The address to listen on} {--port= : The port}"; }
-        fn description() -> string { return "Serve WebSockets (the Pusher protocol) for broadcasting"; }
+        fn signature() -> string {
+            return "sockets:serve {--host= : The address to listen on} {--port= : The port}";
+        }
+        fn description() -> string {
+            return "Serve WebSockets (the Pusher protocol) for broadcasting";
+        }
         fn handle(app: Application) -> int {
             let s = "broadcasting.connections.sockets.";
             let host = self.option("host") != "" ? self.option("host") : Config.getString("sockets.host", "0.0.0.0");
@@ -323,8 +351,12 @@ namespace apogee {
 
     class TelescopePruneCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "telescope:prune {--hours=24 : Keep entries this recent}"; }
-        fn description() -> string { return "Remove old Telescope entries"; }
+        fn signature() -> string {
+            return "telescope:prune {--hours=24 : Keep entries this recent}";
+        }
+        fn description() -> string {
+            return "Remove old Telescope entries";
+        }
         fn handle(app: Application) -> int {
             let hours = self.option("hours") != "" ? self.optionInt("hours") : 24 as long;
             self.output.writeln("<info>Removed ${Telescope.store.prune(hours)} entries.</>");
@@ -334,16 +366,32 @@ namespace apogee {
 
     class TelescopeClearCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "telescope:clear"; }
-        fn description() -> string { return "Remove every Telescope entry"; }
-        fn handle(app: Application) -> int { Telescope.store.clear(); self.output.writeln("<info>Telescope entries cleared.</>"); return 0; }
+        fn signature() -> string {
+            return "telescope:clear";
+        }
+        fn description() -> string {
+            return "Remove every Telescope entry";
+        }
+        fn handle(app: Application) -> int {
+            Telescope.store.clear()
+            self.output.writeln("<info>Telescope entries cleared.</>")
+            return 0
+        }
     }
 
     class PulseClearCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "pulse:clear"; }
-        fn description() -> string { return "Remove every Pulse metric"; }
-        fn handle(app: Application) -> int { Pulse.store.clear(); self.output.writeln("<info>Pulse metrics cleared.</>"); return 0; }
+        fn signature() -> string {
+            return "pulse:clear";
+        }
+        fn description() -> string {
+            return "Remove every Pulse metric";
+        }
+        fn handle(app: Application) -> int {
+            Pulse.store.clear()
+            self.output.writeln("<info>Pulse metrics cleared.</>")
+            return 0
+        }
     }
 
     class ModuleCommands {

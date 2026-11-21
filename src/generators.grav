@@ -50,7 +50,10 @@ namespace apogee {
             let base = Str.startsWith(dir, "database/") || dir == "tests" ? dir : "app/" + dir;
             let file = base + sub + "/" + (kind == "migration" ? Moment.now().format("Y_m_d_His") + "_" + Text.snake(raw) : cls) + ".grav";
             let path = Path.combine(c.kernel.container.make::<Application>().basePath, file);
-            if (new File(path).exists() && !c.flag("force")) { c.output.errorBlock(Text.headline(kind) + " [" + file + "] already exists."); return 1; }
+            if (new File(path).exists() && !c.flag("force")) {
+                c.output.errorBlock(Text.headline(kind) + " [" + file + "] already exists.")
+                return 1
+            }
             let d = Path.dirname(path);
             if (!Dir.exists(d)) { Dir.create(d); }
             new File(path).write(Stubs.render(kind, cls, c));

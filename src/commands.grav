@@ -38,8 +38,12 @@ namespace apogee {
 
     class AboutCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "about {--json : As JSON}"; }
-        fn description() -> string { return "Show basic information about the app"; }
+        fn signature() -> string {
+            return "about {--json : As JSON}";
+        }
+        fn description() -> string {
+            return "Show basic information about the app";
+        }
         fn handle(app: Application) -> int {
             let sections: Array<Array<string>> = [
                 ["Environment", "Application Name", app.name], ["Environment", "Apogee Version", app.version],
@@ -62,7 +66,11 @@ namespace apogee {
             }
             let group = "";
             for (row in sections) {
-                if (row[0] != group) { self.newLine(); self.output.twoColumn("<fg=green;options=bold>" + row[0] + "</>"); group = row[0]; }
+                if (row[0] != group) {
+                    self.newLine()
+                    self.output.twoColumn("<fg=green;options=bold>" + row[0] + "</>")
+                    group = row[0]
+                }
                 self.output.twoColumn(row[1], row[2]);
             }
             self.newLine();
@@ -72,18 +80,32 @@ namespace apogee {
 
     class EnvCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "env"; }
-        fn description() -> string { return "Show the current environment"; }
-        fn handle(app: Application) -> int { self.output.infoBlock("The application environment is [" + app.environment + "]."); return 0; }
+        fn signature() -> string {
+            return "env";
+        }
+        fn description() -> string {
+            return "Show the current environment";
+        }
+        fn handle(app: Application) -> int {
+            self.output.infoBlock("The application environment is [" + app.environment + "].")
+            return 0
+        }
     }
 
     class KeyGenerateCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "key:generate {--show : Print the key instead of saving it} {--force : Replace a key that is set}"; }
-        fn description() -> string { return "Set the app key (APP_KEY in .env)"; }
+        fn signature() -> string {
+            return "key:generate {--show : Print the key instead of saving it} {--force : Replace a key that is set}";
+        }
+        fn description() -> string {
+            return "Set the app key (APP_KEY in .env)";
+        }
         fn handle(app: Application) -> int {
             let key = "base64:" + Base64.encodeBytes(Bytes.fromHex(Hash.randomToken(32)));
-            if (self.flag("show")) { self.output.writeln("<comment>" + key + "</>"); return 0; }
+            if (self.flag("show")) {
+                self.output.writeln("<comment>" + key + "</>")
+                return 0
+            }
             let path = app.path(".env");
             let f = new File(path);
             let text = f.exists() ? f.read() : "";
@@ -93,7 +115,10 @@ namespace apogee {
             let lines = new Array<string>();
             let done = false;
             for (l in Str.lines(text)) {
-                if (Str.startsWith(l, "APP_KEY=")) { lines.push("APP_KEY=" + key); done = true; } else { lines.push(l); }
+                if (Str.startsWith(l, "APP_KEY=")) {
+                    lines.push("APP_KEY=" + key)
+                    done = true
+                } else { lines.push(l); }
             }
             if (!done) { lines.push("APP_KEY=" + key); }
             f.write(Str.join(lines, "\n") + "\n");
@@ -107,12 +132,19 @@ namespace apogee {
 
     class ConfigShowCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "config:show {key? : A config path (all of it when left out)}"; }
-        fn description() -> string { return "Show configuration values"; }
+        fn signature() -> string {
+            return "config:show {key? : A config path (all of it when left out)}";
+        }
+        fn description() -> string {
+            return "Show configuration values";
+        }
         fn handle() -> int {
             let key = self.argument("key");
             let v = key == "" ? Config.all() as any : Config.get(key);
-            if (v == null) { self.error("No configuration called '" + key + "'."); return 1; }
+            if (v == null) {
+                self.error("No configuration called '" + key + "'.")
+                return 1
+            }
             if (v is HashMap<string, any>) {
                 let flat = Arr.dot(v as HashMap<string, any>);
                 let names = flat.keys();
@@ -130,8 +162,12 @@ namespace apogee {
 
     class RouteListCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "route:list {--method= : Only this method} {--name= : Names containing this} {--path= : Paths containing this} {--json}"; }
-        fn description() -> string { return "List the routes"; }
+        fn signature() -> string {
+            return "route:list {--method= : Only this method} {--name= : Names containing this} {--path= : Paths containing this} {--json}";
+        }
+        fn description() -> string {
+            return "List the routes";
+        }
         fn handle(router: Router) -> int {
             let rows = new Array<RouteDef>();
             for (r in router.all()) {
@@ -166,8 +202,12 @@ namespace apogee {
 
     class ServeCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "serve {--host= : The address to listen on} {--port= : The port} {--workers= : Event-loop threads (default: one per CPU)}"; }
-        fn description() -> string { return "Serve the app over HTTP"; }
+        fn signature() -> string {
+            return "serve {--host= : The address to listen on} {--port= : The port} {--workers= : Event-loop threads (default: one per CPU)}";
+        }
+        fn description() -> string {
+            return "Serve the app over HTTP";
+        }
         fn handle(app: Application) -> int {
             let host = self.option("host") != "" ? self.option("host") : Config.getString("http.host", "*");
             let port = self.option("port") != "" ? self.optionInt("port") as int : Config.getInt("http.port", 8000) as int;
@@ -198,8 +238,12 @@ namespace apogee {
 
     class DownCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "down {--secret= : A path that lets you in (/secret)} {--with-secret : Make up a secret} {--retry=60 : Retry-After seconds} {--refresh=0 : Refresh the page after seconds} {--status=503} {--message=} {--allow=* : IPs that still get in}"; }
-        fn description() -> string { return "Put the app into maintenance mode"; }
+        fn signature() -> string {
+            return "down {--secret= : A path that lets you in (/secret)} {--with-secret : Make up a secret} {--retry=60 : Retry-After seconds} {--refresh=0 : Refresh the page after seconds} {--status=503} {--message=} {--allow=* : IPs that still get in}";
+        }
+        fn description() -> string {
+            return "Put the app into maintenance mode";
+        }
         fn handle(app: Application) -> int {
             let secret = self.flag("with-secret") ? Text.random(24) : self.option("secret");
             MaintenanceMode.down(app, secret, self.optionInt("retry", 60), self.optionInt("refresh", 0), self.optionInt("status", 503) as int, self.option("message"), self.optionList("allow"));
@@ -211,10 +255,17 @@ namespace apogee {
 
     class UpCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "up"; }
-        fn description() -> string { return "Bring the app out of maintenance mode"; }
+        fn signature() -> string {
+            return "up";
+        }
+        fn description() -> string {
+            return "Bring the app out of maintenance mode";
+        }
         fn handle(app: Application) -> int {
-            if (!MaintenanceMode.up(app)) { self.output.infoBlock("Application is already up."); return 0; }
+            if (!MaintenanceMode.up(app)) {
+                self.output.infoBlock("Application is already up.")
+                return 0
+            }
             self.output.infoBlock("Application is now live.");
             return 0;
         }
@@ -223,23 +274,38 @@ namespace apogee {
     // ── migrations ─────────────────────────────────────────────────────────────
     class MigrateCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "migrate {--force : Run in production without asking} {--seed : Seed afterwards} {--isolated : Skip, instead of waiting, while another server migrates}"; }
-        fn description() -> string { return "Run the migrations not run yet"; }
+        fn signature() -> string {
+            return "migrate {--force : Run in production without asking} {--seed : Seed afterwards} {--isolated : Skip, instead of waiting, while another server migrates}";
+        }
+        fn description() -> string {
+            return "Run the migrations not run yet";
+        }
         fn handle(app: Application, m: Migrator) -> int {
             if (!FrameworkCommands.confirmInProduction(self, app)) { return 1; }
             // (other servers migrating: wait for them, or with --isolated leave it to them)
             let ran = self.flag("isolated") ? m.tryMigrate() : m.migrate();
-            if (ran == null) { self.output.infoBlock("Another process is migrating; skipped."); return 0; }
+            if (ran == null) {
+                self.output.infoBlock("Another process is migrating; skipped.")
+                return 0
+            }
             if (ran.size() == 0) { self.output.infoBlock("Nothing to migrate."); }
-            else { self.output.infoBlock("Running migrations."); for (n in ran) { self.output.twoColumn(n, "<fg=green;options=bold>DONE</>"); } self.newLine(); }
+            else {
+                self.output.infoBlock("Running migrations.")
+                for (n in ran) { self.output.twoColumn(n, "<fg=green;options=bold>DONE</>"); }
+                self.newLine()
+            }
             if (self.flag("seed")) { return self.call("db:seed --force"); }
             return 0;
         }
     }
     class MigrateStatusCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "migrate:status"; }
-        fn description() -> string { return "Show which migrations have run"; }
+        fn signature() -> string {
+            return "migrate:status";
+        }
+        fn description() -> string {
+            return "Show which migrations have run";
+        }
         fn handle(m: Migrator) -> int {
             for (line in m.status()) {
                 let name = Text.before(line, ": ");
@@ -251,8 +317,12 @@ namespace apogee {
     }
     class MigrateRollbackCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "migrate:rollback {--step=1 : How many batches} {--force}"; }
-        fn description() -> string { return "Undo the last batch of migrations"; }
+        fn signature() -> string {
+            return "migrate:rollback {--step=1 : How many batches} {--force}";
+        }
+        fn description() -> string {
+            return "Undo the last batch of migrations";
+        }
         fn handle(app: Application, m: Migrator) -> int {
             if (!FrameworkCommands.confirmInProduction(self, app)) { return 1; }
             let undone = m.rollback(self.optionInt("step", 1) as int);
@@ -263,8 +333,12 @@ namespace apogee {
     }
     class MigrateResetCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "migrate:reset {--force}"; }
-        fn description() -> string { return "Undo every migration"; }
+        fn signature() -> string {
+            return "migrate:reset {--force}";
+        }
+        fn description() -> string {
+            return "Undo every migration";
+        }
         fn handle(app: Application, m: Migrator) -> int {
             if (!FrameworkCommands.confirmInProduction(self, app)) { return 1; }
             for (n in m.reset()) { self.output.twoColumn(n, "<fg=yellow;options=bold>ROLLED BACK</>"); }
@@ -273,8 +347,12 @@ namespace apogee {
     }
     class MigrateRefreshCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "migrate:refresh {--seed} {--force}"; }
-        fn description() -> string { return "Undo every migration, then run them all"; }
+        fn signature() -> string {
+            return "migrate:refresh {--seed} {--force}";
+        }
+        fn description() -> string {
+            return "Undo every migration, then run them all";
+        }
         fn handle(app: Application, m: Migrator) -> int {
             if (!FrameworkCommands.confirmInProduction(self, app)) { return 1; }
             let ran = m.refresh();
@@ -284,8 +362,12 @@ namespace apogee {
     }
     class MigrateFreshCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "migrate:fresh {--seed} {--force}"; }
-        fn description() -> string { return "Drop every migrated table and migrate again"; }
+        fn signature() -> string {
+            return "migrate:fresh {--seed} {--force}";
+        }
+        fn description() -> string {
+            return "Drop every migrated table and migrate again";
+        }
         fn handle(app: Application, m: Migrator) -> int {
             if (!FrameworkCommands.confirmInProduction(self, app)) { return 1; }
             m.reset();
@@ -296,14 +378,24 @@ namespace apogee {
     }
     class DbSeedCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "db:seed {--class=DatabaseSeeder : The seeder} {--force}"; }
-        fn description() -> string { return "Seed the database"; }
+        fn signature() -> string {
+            return "db:seed {--class=DatabaseSeeder : The seeder} {--force}";
+        }
+        fn description() -> string {
+            return "Seed the database";
+        }
         fn handle(app: Application) -> int {
             if (!FrameworkCommands.confirmInProduction(self, app)) { return 1; }
             let name = self.option("class");
             let s = app.seeders.getOr(name, null);
-            if (s == null) { self.error("No seeder called '" + name + "' (give it to withSeeders)."); return 1; }
-            let ok = self.task("Seeding " + name, fn() -> bool { Seeder.seed(s); return true; });
+            if (s == null) {
+                self.error("No seeder called '" + name + "' (give it to withSeeders).")
+                return 1
+            }
+            let ok = self.task("Seeding " + name, fn() -> bool {
+                Seeder.seed(s)
+                return true
+            });
             return ok ? 0 : 1;
         }
     }
@@ -316,7 +408,9 @@ namespace apogee {
                    "{--tries=1} {--timeout=60} {--sleep=3} {--backoff=0 : Seconds (or a list: 10,60)} {--max-jobs=0} {--max-time=0} {--memory=128} " +
                    "{--rest=0 : Milliseconds between jobs} {--threads=1 : Workers in this process} {--stop-when-empty} {--once : One job, then stop}";
         }
-        fn description() -> string { return "Process jobs on the queue"; }
+        fn description() -> string {
+            return "Process jobs on the queue";
+        }
         fn handle(q: QueueManager) -> int {
             let o = new WorkerOptions();
             o.name = self.option("name");
@@ -345,11 +439,18 @@ namespace apogee {
     }
     class QueueFailedCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "queue:failed"; }
-        fn description() -> string { return "List the failed jobs"; }
+        fn signature() -> string {
+            return "queue:failed";
+        }
+        fn description() -> string {
+            return "List the failed jobs";
+        }
         fn handle(q: QueueManager) -> int {
             let all = q.failedJobs.all();
-            if (all.size() == 0) { self.output.infoBlock("No failed jobs found."); return 0; }
+            if (all.size() == 0) {
+                self.output.infoBlock("No failed jobs found.")
+                return 0
+            }
             for (f in all) {
                 self.output.twoColumn("<fg=gray>" + f.failedMoment().toDateTimeString() + "</> " + f.id, f.connection + "@" + f.queue + " " + f.jobClass());
             }
@@ -358,8 +459,12 @@ namespace apogee {
     }
     class QueueRetryCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "queue:retry {id?* : Failed job ids} {--all : Every failed job}"; }
-        fn description() -> string { return "Put failed jobs back on their queues"; }
+        fn signature() -> string {
+            return "queue:retry {id?* : Failed job ids} {--all : Every failed job}";
+        }
+        fn description() -> string {
+            return "Put failed jobs back on their queues";
+        }
         fn handle(q: QueueManager) -> int {
             if (self.flag("all") || (self.argumentList("id").size() == 1 && self.argumentList("id")[0] == "all")) {
                 let n = q.retryAll();
@@ -367,7 +472,10 @@ namespace apogee {
                 return 0;
             }
             let ids = self.argumentList("id");
-            if (ids.size() == 0) { self.error("Give the failed job ids (or --all)."); return 1; }
+            if (ids.size() == 0) {
+                self.error("Give the failed job ids (or --all).")
+                return 1
+            }
             for (id in ids) {
                 if (q.retry(id)) { self.output.twoColumn(id, "<fg=green;options=bold>DONE</>"); } else { self.error("Unable to find failed job " + id + "."); }
             }
@@ -376,18 +484,29 @@ namespace apogee {
     }
     class QueueForgetCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "queue:forget {id}"; }
-        fn description() -> string { return "Delete a failed job"; }
+        fn signature() -> string {
+            return "queue:forget {id}";
+        }
+        fn description() -> string {
+            return "Delete a failed job";
+        }
         fn handle(q: QueueManager) -> int {
-            if (!q.failedJobs.forget(self.argument("id"))) { self.error("No failed job matches the given ID."); return 1; }
+            if (!q.failedJobs.forget(self.argument("id"))) {
+                self.error("No failed job matches the given ID.")
+                return 1
+            }
             self.output.infoBlock("Failed job deleted successfully.");
             return 0;
         }
     }
     class QueueFlushCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "queue:flush {--hours=0 : Only those older than this}"; }
-        fn description() -> string { return "Delete the failed jobs"; }
+        fn signature() -> string {
+            return "queue:flush {--hours=0 : Only those older than this}";
+        }
+        fn description() -> string {
+            return "Delete the failed jobs";
+        }
         fn handle(q: QueueManager) -> int {
             let n = q.failedJobs.flush(self.optionInt("hours", 0));
             self.output.infoBlock("Deleted ${n} failed job(s).");
@@ -396,14 +515,26 @@ namespace apogee {
     }
     class QueueRestartCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "queue:restart"; }
-        fn description() -> string { return "Tell every worker to stop after its current job"; }
-        fn handle(q: QueueManager) -> int { Worker.signalRestart(q.cache); self.output.infoBlock("Broadcasting queue restart signal."); return 0; }
+        fn signature() -> string {
+            return "queue:restart";
+        }
+        fn description() -> string {
+            return "Tell every worker to stop after its current job";
+        }
+        fn handle(q: QueueManager) -> int {
+            Worker.signalRestart(q.cache)
+            self.output.infoBlock("Broadcasting queue restart signal.")
+            return 0
+        }
     }
     class QueueClearCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "queue:clear {connection?} {--queue=default} {--force}"; }
-        fn description() -> string { return "Delete every job on a queue"; }
+        fn signature() -> string {
+            return "queue:clear {connection?} {--queue=default} {--force}";
+        }
+        fn description() -> string {
+            return "Delete every job on a queue";
+        }
         fn handle(app: Application, q: QueueManager) -> int {
             if (!FrameworkCommands.confirmInProduction(self, app)) { return 1; }
             let conn = self.argument("connection") == "" ? q.defaultConnection : self.argument("connection");
@@ -414,8 +545,12 @@ namespace apogee {
     }
     class QueueMonitorCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "queue:monitor {queues : connection:queue,… (or just queue names)} {--max=1000 : Fire QueueBusy above this}"; }
-        fn description() -> string { return "Show how many jobs wait on queues (and say when there are too many)"; }
+        fn signature() -> string {
+            return "queue:monitor {queues : connection:queue,… (or just queue names)} {--max=1000 : Fire QueueBusy above this}";
+        }
+        fn description() -> string {
+            return "Show how many jobs wait on queues (and say when there are too many)";
+        }
         fn handle(q: QueueManager) -> int {
             let max = self.optionInt("max", 1000);
             for (spec in Str.split(self.argument("queues"), ",")) {
@@ -433,20 +568,40 @@ namespace apogee {
 
     class CacheClearCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "cache:clear"; }
-        fn description() -> string { return "Flush the app cache"; }
-        fn handle(cache: CacheRepository) -> int { cache.flush(); self.output.infoBlock("Application cache cleared successfully."); return 0; }
+        fn signature() -> string {
+            return "cache:clear";
+        }
+        fn description() -> string {
+            return "Flush the app cache";
+        }
+        fn handle(cache: CacheRepository) -> int {
+            cache.flush()
+            self.output.infoBlock("Application cache cleared successfully.")
+            return 0
+        }
     }
     class ViewClearCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "view:clear"; }
-        fn description() -> string { return "Forget every parsed template"; }
-        fn handle(views: ViewFactory) -> int { views.flush(); self.output.infoBlock("Compiled views cleared successfully."); return 0; }
+        fn signature() -> string {
+            return "view:clear";
+        }
+        fn description() -> string {
+            return "Forget every parsed template";
+        }
+        fn handle(views: ViewFactory) -> int {
+            views.flush()
+            self.output.infoBlock("Compiled views cleared successfully.")
+            return 0
+        }
     }
     class MailTestCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "mail:test {to : Where to send it} {--mailer= : Which mailer}"; }
-        fn description() -> string { return "Send a test mail"; }
+        fn signature() -> string {
+            return "mail:test {to : Where to send it} {--mailer= : Which mailer}";
+        }
+        fn description() -> string {
+            return "Send a test mail";
+        }
         fn handle(app: Application, mail: MailManager) -> int {
             let m = mail.mailer(self.option("mailer"));
             let sent = m.raw(self.argument("to"), "Test mail from " + app.name, "If you can read this, " + app.name + " can send mail through the [" + m.name + "] mailer.");
@@ -456,8 +611,12 @@ namespace apogee {
     }
     class InspireCommand extends ConsoleCommand {
         constructor() {}
-        fn signature() -> string { return "inspire"; }
-        fn description() -> string { return "Display an inspiring quote"; }
+        fn signature() -> string {
+            return "inspire";
+        }
+        fn description() -> string {
+            return "Display an inspiring quote";
+        }
         fn handle() -> int {
             let quotes: Array<string> = ["Simplicity is the ultimate sophistication. — Leonardo da Vinci",
                 "Well begun is half done. — Aristotle", "Very little is needed to make a happy life. — Marcus Aurelius",
