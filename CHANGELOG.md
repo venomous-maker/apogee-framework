@@ -14,6 +14,8 @@ Needs grav 1.10.1 or newer.
   locally and gated (`viewTelescope`, `viewPulse`, `viewQueueDashboard`)
   elsewhere; their routes run with the session and refuse cross-site
   requests that change something (`same-origin`).
+- On SQLite, the modules write their tables through Orbit's connection, so
+  they join a transaction in progress (a seeder's) instead of waiting on it.
 - Commands: `sockets:serve`, `telescope:prune`, `telescope:clear`, `pulse:clear`.
 - An app key too short to encrypt with leaves `Crypt` unset instead of
   stopping the app.
