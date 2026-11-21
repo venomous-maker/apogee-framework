@@ -119,6 +119,11 @@ Anywhere else they answer only a signed-in user whom the gate allows
 gate.define("viewPulse", fn(user: any, args: Array<any>) -> any { return (user as User).isAdmin })
 ```
 
+Their routes run with the session (so the gate knows who is signed in) and
+the `same-origin` middleware: a request that changes something is refused
+when its `Origin` (or `Referer`) names another site, so no other page can
+press a dashboard's buttons for a signed-in admin.
+
 An app key too short to encrypt with (under 32 bytes) leaves `Crypt` unset
 rather than stopping the app; `key:generate` makes one that is long enough.
 
