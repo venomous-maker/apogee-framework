@@ -57,6 +57,15 @@ namespace apogee {
             r.aliasInstance("same-origin", new SameOriginOnly());
             r.middleware(["session", "same-origin"]).group(fn(g: Router) { add(g); });
         }
+        // The pool a module's tables are written through. On SQLite, Orbit's own
+        // connection (this thread's): a second connection would wait on the
+        // write lock of any transaction this thread has open (a seeder, a
+        // request's DB.transaction), so the module's writes join it instead.
+        // On MySQL and PostgreSQL, the app's pool.
+        static fn storePool(app: Application) -> Pool {
+            let driver = Config.getString("database.connections." + Config.getString("database.default", "sqlite") + ".driver", Config.getString("database.default", "sqlite"));
+            return driver == "sqlite" ? new OrbitConnectionPool() as Pool : app.container.make::<Pool>();
+        }
         static fn splitList(s: string) -> Array<string> {
             let out = new Array<string>();
             for (x in Str.split(s, ",")) { if (Str.trim(x) != "") { out.push(Str.trim(x)); } }
@@ -148,7 +157,7 @@ namespace apogee {
         fn boot() {
             let c = self.app.container;
             let store = Config.getString("features.store", "database");
-            if (store == "database") { let s = new DatabaseFeatureStore(c.make::<Pool>()); s.createTable(); Feature.useStore(s); }
+            if (store == "database") { let s = new DatabaseFeatureStore(ModuleProviders.storePool(self.app)); s.createTable(); Feature.useStore(s); }
             else if (store == "cache") { Feature.useStore(new CacheFeatureStore(c.make::<CacheRepository>().store)); }
             else { Feature.useStore(new MemoryFeatureStore()); }
             c.make::<Router>().aliasMiddleware("feature", fn(a: Array<string>) -> Middleware { return new EnsureFeature(Str.join(a, ",")); });
@@ -161,7 +170,7 @@ namespace apogee {
         fn boot() {
             let driver = Config.getString("scout.driver", "database");
             Scout.prefix = Config.getString("scout.prefix");
-            if (driver == "database") { let e = new DatabaseEngine(self.app.container.make::<Pool>()); e.createTables(); Scout.use(e); }
+            if (driver == "database") { let e = new DatabaseEngine(ModuleProviders.storePool(self.app)); e.createTables(); Scout.use(e); }
             else if (driver == "meilisearch") { Scout.use(new MeilisearchEngine(Config.getString("scout.meilisearch.host"), Config.getString("scout.meilisearch.key"))); }
             else { Scout.use(new MemoryEngine()); }
         }
@@ -175,7 +184,7 @@ namespace apogee {
             let c = app.container;
             if (!Config.getBool("telescope.enabled", false)) { Telescope.recording = false; return; }
             if (Config.getString("telescope.driver", "database") == "database") {
-                let s = new DatabaseTelescopeStore(c.make::<Pool>());
+                let s = new DatabaseTelescopeStore(ModuleProviders.storePool(app));
                 s.createTable();
                 Telescope.use(s);
             } else {
@@ -205,6 +214,7 @@ namespace apogee {
             let c = app.container;
             if (!Config.getBool("pulse.enabled", false)) { Pulse.recording = false; return; }
             if (Config.getString("pulse.driver", "database") == "database") {
+                // (its own pool: it writes from a background thread, and retries a flush that meets a lock)
                 let s = new DatabasePulseStore(c.make::<Pool>());
                 s.createTables();
                 Pulse.use(s);
@@ -242,7 +252,7 @@ namespace apogee {
             let driver = Config.getString("queue_dashboard.driver", "database");
             let store: DashboardStore = null;
             if (driver == "redis") { store = new RedisDashboardStore(RedisConnection.open(Config.getString("redis.url"))); }
-            else if (driver == "database") { let s = new DatabaseDashboardStore(c.make::<Pool>()); s.createTables(); store = s; }
+            else if (driver == "database") { let s = new DatabaseDashboardStore(ModuleProviders.storePool(app)); s.createTables(); store = s; }
             else { store = new MemoryDashboardStore(); }
             let dash = new QueueDashboard(c.make::<QueueManager>(), store);
             c.instance::<QueueDashboard>(dash);
