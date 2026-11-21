@@ -6,6 +6,10 @@ compiler versions it builds with.
 
 ## Unreleased
 
+### Requirements
+
+- Uses apogee-queue v0.3.0, apogee-scheduler v0.2.2 and apogee-mail v0.2.2.
+
 ## 0.2.1 (2026-11-20)
 
 ### Requirements
