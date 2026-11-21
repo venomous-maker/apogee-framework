@@ -17,6 +17,10 @@ every Apogee module from your `.env` and `config/*.json`.
 | Background work | queue, scheduler, mail |
 | Command line | console |
 | Data and logs | grav-cache, grav-redis, grav-orbit (the ORM), grav-logger |
+| Security and files | crypt, storage (local and S3 disks), lang (translations) |
+| Real time | broadcast, sockets (a Pusher-protocol WebSocket server) |
+| Product | pennant (feature flags), scout (search), socialite (OAuth and OpenID Connect sign-in), http-client |
+| Watching | telescope (debugging), pulse (production metrics), queue-dashboard |
 
 **What it adds:**
 
@@ -96,6 +100,27 @@ singleton made on first use:
 | Routing | the router and HTTP kernel (see below) |
 | Schedule | the schedule, in the app's time zone |
 | Console | the commands below, plus your discovered `ConsoleCommand`s |
+| Crypt | `Crypt` with the app key (`APP_PREVIOUS_KEYS` still read); a `MessageSigner` |
+| Storage | the `local` (`storage/app`) and `public` disks, and `s3` when `AWS_BUCKET` is set; `FILESYSTEM_DISK` is the default |
+| Lang | a translator over `lang/`, in `app.locale` with `APP_FALLBACK_LOCALE` |
+| Broadcasting | `BROADCAST_CONNECTION`: `null`, `log` or `sockets` (`SOCKETS_URL`, `SOCKETS_APP_ID/KEY/SECRET`); events dispatched as `BroadcastEvent`s go out; `POST /broadcasting/auth` signs private and presence channels |
+| Features | `FEATURES_STORE`: `database` (default), `cache` or `memory`; the `feature:name` middleware |
+| Scout | `SCOUT_DRIVER`: `database` (full-text search in the app's database, the default), `meilisearch` (`MEILISEARCH_HOST`, `MEILISEARCH_KEY`) or `memory` |
+| Telescope | `TELESCOPE_ENABLED` (default: only when `APP_ENV=local`): every request with what it did, at `/telescope` |
+| Pulse | `PULSE_ENABLED`: per-minute production metrics, at `/pulse` |
+| Queue dashboard | `QUEUE_DASHBOARD_ENABLED`: jobs, waits, failures and batches, at `/queue-dashboard` (`QUEUE_DASHBOARD_DRIVER`: `database`, `redis` or `memory`) |
+| Socialite | each provider with a client id (`GITHUB_CLIENT_ID`, `GOOGLE_CLIENT_ID`… and `_CLIENT_SECRET`, `_REDIRECT_URI`; `MICROSOFT_TENANT`, `GITLAB_HOST`, `OIDC_ISSUER`) |
+
+The three dashboards answer anyone on this machine when `APP_ENV=local`.
+Anywhere else they answer only a signed-in user whom the gate allows
+`viewTelescope`, `viewPulse` or `viewQueueDashboard`:
+
+```grav
+gate.define("viewPulse", fn(user: any, args: Array<any>) -> any { return (user as User).isAdmin })
+```
+
+An app key too short to encrypt with (under 32 bytes) leaves `Crypt` unset
+rather than stopping the app; `key:generate` makes one that is long enough.
 
 **Routing in detail:**
 
@@ -115,7 +140,7 @@ singleton made on first use:
 | Database | `migrate [--seed --isolated]`, `migrate:status`, `migrate:rollback [--step]`, `migrate:reset`, `migrate:refresh [--seed]`, `migrate:fresh [--seed]`, `db:seed [--class]` (each asks first in production unless `--force`) |
 | Queue | `queue:work [connection] [--queue=high,default --tries --timeout --sleep --backoff --max-jobs --max-time --memory --rest --threads --stop-when-empty --once]`, `queue:failed`, `queue:retry id… / --all`, `queue:forget`, `queue:flush [--hours]`, `queue:restart`, `queue:clear`, `queue:monitor queues [--max]` |
 | Schedule | `schedule:run`, `schedule:work`, `schedule:list`, `schedule:test`, `schedule:interrupt`, `schedule:clear-cache` |
-| Other | `cache:clear`, `view:clear`, `mail:test to [--mailer]` |
+| Other | `cache:clear`, `view:clear`, `mail:test to [--mailer]`, `sockets:serve [--host --port]`, `telescope:prune [--hours]`, `telescope:clear`, `pulse:clear` |
 | Generators | `make:command`, `controller [--resource --api --invokable --model]`, `middleware`, `request`, `resource`, `model [-m -c -f -s --policy -a]`, `job [--unique]`, `event`, `listener [--event --queued]`, `mail [--markdown]`, `notification`, `policy [--model]`, `provider`, `rule`, `migration [--create --table]`, `seeder`, `factory`, `test` |
 
 ## Serving
