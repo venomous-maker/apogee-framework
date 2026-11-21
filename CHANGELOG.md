@@ -6,6 +6,8 @@ compiler versions it builds with.
 
 ## Unreleased
 
+## 0.3.0 (2026-11-21)
+
 Needs grav 1.10.1 or newer.
 
 - Twelve more modules, each wired from the configuration by a provider:
