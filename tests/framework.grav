@@ -1,7 +1,9 @@
 // apogee-framework's tests: an app in a temporary folder, end to end — its
 // configuration, providers (deferred ones too), routes through the HTTP
 // kernel, auth over an Orbit model, validation with unique rules, queued
-// jobs and mail, maintenance mode, migrations and seeders, and the commands.
+// jobs and mail, maintenance mode, migrations and seeders, the commands, and
+// the modules wired from the configuration (encryption, disks, translations,
+// broadcasting, feature flags, search, the dashboards, social sign-in).
 import "std"
 import "../src/all.grav"
 use apogee.*
@@ -67,12 +69,12 @@ class WelcomeMail extends Mailable {
     fn build() { self.subject("Welcome, " + self.name).markdown("# Hi " + self.name + "!\n\nGlad you are here.") }
 }
 
-fn makeApp() -> Application {
+fn makeApp(extraEnv: string = "") -> Application {
     let dir = Path.combine(Dir.temp(), "apogee-framework-test")
     Dir.removeAll(dir)
     Dir.create(dir + "/config")
     Dir.create(dir + "/resources/views")
-    new File(dir + "/.env").write("APP_NAME=Testapp\nAPP_ENV=testing\nAPP_DEBUG=true\nAPP_KEY=base64:dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleQ==\nDB_DATABASE=" + dir + "/db.sqlite\nMAIL_MAILER=array\nQUEUE_CONNECTION=memory\nSESSION_DRIVER=memory\nCACHE_STORE=memory\n")
+    new File(dir + "/.env").write("APP_NAME=Testapp\nAPP_ENV=testing\nAPP_DEBUG=true\nAPP_KEY=base64:dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleQ==\nDB_DATABASE=" + dir + "/db.sqlite\nMAIL_MAILER=array\nQUEUE_CONNECTION=memory\nSESSION_DRIVER=memory\nCACHE_STORE=memory\n" + extraEnv)
     new File(dir + "/config/auth.json").write("{\"model\": \"Member\"}")
     new File(dir + "/config/app.json").write("{\"timezone\": \"Africa/Nairobi\", \"features\": {\"signup\": true}}")
     Passwords.iterations = 1000
@@ -177,4 +179,56 @@ test "commands: about, route:list, config:show, schedule:list, key:generate, mak
     assertEq(app.call("inspire"), 0)
     assertEq(app.call("env"), 0)
     assertEq(Str.contains(app.output(), "[testing]"), true)
+}
+
+test "the modules, from the configuration" {
+    // (configuration is process-wide: start from none, as a real app does)
+    Config.reset()
+    Env.reset()
+    let app = makeApp("TELESCOPE_ENABLED=true\nPULSE_ENABLED=true\nQUEUE_DASHBOARD_ENABLED=true\nBROADCAST_CONNECTION=log\n" +
+                      "APP_KEY=base64:YXBvZ2VlLWZyYW1ld29yay1tb2R1bGVzLXRlc3QtMzI=\n" +
+                      "GITHUB_CLIENT_ID=gh-id\nGITHUB_CLIENT_SECRET=gh-secret\nAPP_URL=https://app.test\n")
+    Dir.create(app.path("lang"))
+    new File(app.path("lang/en.json")).write("{\"hello\": \"Hello, :name!\"}")
+    app.boot()
+    app.call("migrate")
+    // encryption with the app key; disks; translations (over lang/, read when first asked)
+    assertEq(Crypt.decrypt(Crypt.encrypt("secret")) as string, "secret")
+    Storage.disk("local").put("notes/a.txt", "hi")
+    assertEq(Storage.get("notes/a.txt"), "hi")
+    assert(new File(app.path("storage/app/notes/a.txt")).exists())
+    assertEq(Lang.get("hello", {"name": "Ada"}), "Hello, Ada!")
+    // feature flags in the database; search over the database
+    Feature.activateForEveryone("beta")
+    let pool = app.make::<Pool>()
+    let conn = pool.acquire()
+    assert(Integer.parseOr(str(conn.queryValue("SELECT COUNT(*) FROM features WHERE name = ?", ["beta"])), 0) >= 1)
+    pool.release(conn)
+    assert(Scout.engine is DatabaseEngine)
+    // social sign-in configured from GITHUB_CLIENT_ID, the redirect from APP_URL
+    assert(Socialite.has("github") && !Socialite.has("google"))
+    assertEq(Socialite.driver("github").redirectUrl, "https://app.test/auth/github/callback")
+    // the dashboards (the test app is not local: the gate asks for a user)
+    let r = api(app, "GET", "/api/me")
+    assertEq(r.statusCode(), 401)
+    let t = api(app, "GET", "/telescope/api/counts")
+    assertEq(t.statusCode(), 403)
+    assertEq(api(app, "GET", "/pulse/api/overview").statusCode(), 403)
+    assertEq(api(app, "GET", "/queue-dashboard").statusCode(), 403)
+    // ...but they record: the request above is in Telescope and Pulse
+    let q = new EntryQuery()
+    q.type = "request"
+    assert(Telescope.store.query(q).size() >= 1)
+    Pulse.flush()
+    assert(Pulse.store.top("request", Pulse.minuteNow() - 5, "count", 10).size() >= 1)
+    assert(app.make::<QueueDashboard>() != null)
+    // the commands
+    app.call("list")
+    let list = app.output()
+    assert(Str.contains(list, "sockets:serve") && Str.contains(list, "telescope:prune") && Str.contains(list, "pulse:clear"))
+    assertEq(app.call("telescope:clear"), 0)
+    assertEq(Telescope.store.query(q).size(), 0)
+    Pulse.stop()
+    Telescope.recording = false
+    Pulse.recording = false
 }
