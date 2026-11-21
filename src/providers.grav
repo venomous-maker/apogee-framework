@@ -25,6 +25,7 @@ import "orbit.grav"
 import "maintenance.grav"
 import "commands.grav"
 import "generators.grav"
+import "modules.grav"
 import "application.grav"
 
 namespace apogee {
@@ -365,6 +366,7 @@ namespace apogee {
                 k.cache = c.make::<CacheRepository>();
                 k.events = c.make::<Events>();
                 FrameworkCommands.register(k);
+                ModuleCommands.register(k);
                 registerScheduleCommands(k);
                 Generators.register(k);
                 k.discover();

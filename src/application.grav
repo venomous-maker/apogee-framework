@@ -223,6 +223,7 @@ namespace apogee {
         fn withSeeders(list: Array<Seeder>) -> ApplicationBuilder { for (s in list) { self.app.seeders.put(ClassInfo.of(s).simpleName(), s); } return self; }
         fn create() -> Application {
             for (p in FrameworkProviders.all()) { self.app.register(p); }
+            for (p in ModuleProviders.all()) { self.app.register(p); }
             for (p in self.extra) { self.app.register(p); }
             return self.app;
         }
