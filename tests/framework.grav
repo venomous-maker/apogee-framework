@@ -273,3 +273,50 @@ test "the modules, from the configuration" {
     Telescope.recording = false
     Pulse.recording = false
 }
+
+// A module's package: found, its defaults applied, its migration and command
+// added, its middleware and route connected (nothing listed by hand).
+class CreateWidgetsTable extends Migration {
+    constructor() {}
+    fn up() { Schema.create("widgets", fn(t: Blueprint) { t.id(); t.varchar("name") }) }
+    fn down() { Schema.dropIfExists("widgets") }
+}
+class WidgetsCommand extends ConsoleCommand {
+    constructor() {}
+    fn signature() -> string { return "widgets:count" }
+    fn description() -> string { return "Count widgets" }
+    fn handle() -> int { self.output.writeln("widgets: ${Config.getInt("widgets.limit", 0)}"); return 0 }
+}
+class Stamp implements Middleware {
+    constructor() {}
+    fn handle(req: Request, next: fn(Request) -> Response) -> Response { let r = next(req); r.http.header("X-Widgets", "yes"); return r }
+}
+class WidgetsPackage extends ApogeePackage {
+    constructor() {}
+    fn name() -> string { return "widgets" }
+    fn defaults() -> HashMap<string, any> { return {"widgets.limit": 7, "widgets.title": "Widgets"} }
+    fn migrations() -> Array<any> { return [new CreateWidgetsTable() as any] }
+    fn commands() -> Array<any> { return [new WidgetsCommand() as any] }
+    fn boot(app: PackageContext) {
+        let r = app.make::<Router>()
+        r.aliasInstance("widgets.stamp", new Stamp())
+        r.get("/widgets", fn(req: Request) -> Response { return Response.json({"limit": Config.getInt("widgets.limit", 0)}) }).middleware(["widgets.stamp"])
+    }
+}
+
+test "packages connect themselves" {
+    Config.reset()
+    Env.reset()
+    let app = makeApp("WIDGETS_IGNORED=1\n")
+    assertEq(app.packages.size(), 1)
+    assertEq(app.packages[0].name(), "widgets")
+    assertEq(Config.getInt("widgets.limit", 0), 7 as long)
+    app.boot()
+    assertEq(app.call("migrate"), 0)
+    assert(Str.contains(app.output(), "CreateWidgetsTable"))
+    let res = api(app, "GET", "/widgets")
+    assertEq(res.statusCode(), 200)
+    assertEq(res.getHeader("X-Widgets"), "yes")
+    assertEq(app.call("widgets:count"), 0)
+    assert(Str.contains(app.output(), "widgets: 7"))
+}
