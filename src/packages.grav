@@ -1,0 +1,41 @@
+// packages.grav — modules that connect themselves: every class extending
+// ApogeePackage (apogee-package) in the program is found when the app is
+// created, its defaults applied (the app's own settings win), its migrations
+// added to `migrate`, and it is registered and booted like a service provider.
+// Its commands are found with every other ConsoleCommand.
+import "std"
+import "apogee-container"
+import "apogee-config"
+import "apogee-package"
+import "grav-orbit"
+import "application.grav"
+use orbit.*
+
+namespace apogee {
+
+    // A package, as one of the app's service providers.
+    class PackageServiceProvider extends ServiceProvider {
+        public pkg: ApogeePackage
+        constructor(pkg: ApogeePackage) { self.pkg = pkg; }
+        private fn context() -> PackageContext { return new PackageContext(self.app.container, self.app.environment, self.app.key); }
+        fn register() { self.pkg.register(self.context()); }
+        fn boot() { self.pkg.boot(self.context()); }
+    }
+
+    class AppPackages {
+        // Finds the program's packages and connects the enabled ones to `app`; them.
+        static fn connect(app: Application) -> Array<ApogeePackage> {
+            let all = Packages.discover();
+            Packages.applyDefaults(all);
+            let on = new Array<ApogeePackage>();
+            for (p in all) {
+                if (!p.enabled()) { continue; }
+                on.push(p);
+                for (m in p.migrations()) { app.migrations.push(m as Migration); }
+                app.register(new PackageServiceProvider(p));
+            }
+            app.packages = on;
+            return on;
+        }
+    }
+}
