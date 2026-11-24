@@ -26,6 +26,7 @@ import "grav-orbit"
 import "defaults.grav"
 import "maintenance.grav"
 import "providers.grav"
+import "packages.grav"
 
 namespace apogee {
 
@@ -64,6 +65,8 @@ namespace apogee {
         public scheduleSetup: fn(Schedule) = null
         public commandSetup: fn(ConsoleKernel) = null
         public migrations: Array<Migration>
+        // The packages connected (apogee-package), in the order they boot.
+        public packages: Array<ApogeePackage> = new Array<ApogeePackage>()
         public seeders: HashMap<string, Seeder>
         private providers: Array<ServiceProvider>
         private deferred: HashMap<string, ServiceProvider>
@@ -319,6 +322,7 @@ namespace apogee {
         fn create() -> Application {
             for (p in FrameworkProviders.all()) { self.app.register(p); }
             for (p in ModuleProviders.all()) { self.app.register(p); }
+            AppPackages.connect(self.app);
             for (p in self.extra) { self.app.register(p); }
             return self.app;
         }
