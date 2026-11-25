@@ -4,12 +4,14 @@
 // added to `migrate`, and it is registered and booted like a service provider.
 // Its commands are found with every other ConsoleCommand.
 import "std"
-import "apogee-container"
 import "apogee-config"
 import "apogee-package"
 import "grav-orbit"
+import "grav-db"
+import "orbit.grav"
 import "application.grav"
 use orbit.*
+use db.*
 
 namespace apogee {
 
@@ -17,7 +19,12 @@ namespace apogee {
     class PackageServiceProvider extends ServiceProvider {
         public pkg: ApogeePackage
         constructor(pkg: ApogeePackage) { self.pkg = pkg; }
-        private fn context() -> PackageContext { return new PackageContext(self.app.container, self.app.environment, self.app.key); }
+        private fn context() -> PackageContext {
+            let ctx = new PackageContext(self.app.container, self.app.environment, self.app.key);
+            let app = self.app;
+            ctx.poolFn = fn() -> Pool { return AppPackages.storePool(app); };
+            return ctx;
+        }
         fn register() { self.pkg.register(self.context()); }
         fn boot() { self.pkg.boot(self.context()); }
     }
@@ -25,6 +32,7 @@ namespace apogee {
     class AppPackages {
         // Finds the program's packages and connects the enabled ones to `app`; them.
         static fn connect(app: Application) -> Array<ApogeePackage> {
+            Packages.basePath = app.basePath;
             let all = Packages.discover();
             Packages.applyDefaults(all);
             let on = new Array<ApogeePackage>();
@@ -36,6 +44,16 @@ namespace apogee {
             }
             app.packages = on;
             return on;
+        }
+        // The pool a package's tables are written through. On SQLite, Orbit's
+        // own connection (this thread's): a second connection would wait on the
+        // write lock of any transaction this thread has open (a seeder, a
+        // request's DB.transaction), so the package's writes join it instead.
+        // On MySQL and PostgreSQL, the app's pool.
+        static fn storePool(app: Application) -> Pool {
+            let def = Config.getString("database.default", "sqlite");
+            let driver = Config.getString("database.connections." + def + ".driver", def);
+            return driver == "sqlite" ? new OrbitConnectionPool() as Pool : app.container.make::<Pool>();
         }
     }
 }
