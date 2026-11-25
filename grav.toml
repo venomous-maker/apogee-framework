@@ -8,8 +8,8 @@ apogee-support = "github.com/venomous-maker/apogee-support@v0.2.0"
 apogee-container = "github.com/venomous-maker/apogee-container@v0.2.0"
 apogee-config = "github.com/venomous-maker/apogee-config@v0.2.0"
 apogee-events = "github.com/venomous-maker/apogee-events@v0.2.0"
-apogee-http = "github.com/venomous-maker/apogee-http@v0.2.0"
-apogee-routing = "github.com/venomous-maker/apogee-routing@v0.2.0"
+apogee-http = { path = "/home/venom/CLionProjects/Practice/apogee-http" }
+apogee-routing = { path = "/home/venom/CLionProjects/Practice/apogee-routing" }
 apogee-validation = "github.com/venomous-maker/apogee-validation@v0.2.0"
 apogee-session = "github.com/venomous-maker/apogee-session@v0.2.1"
 apogee-view = "github.com/venomous-maker/apogee-view@v0.2.0"
@@ -33,6 +33,6 @@ apogee-pulse = { path = "/home/venom/CLionProjects/Practice/apogee-pulse" }
 apogee-socialite = { path = "/home/venom/CLionProjects/Practice/apogee-socialite" }
 grav-cache = "github.com/venomous-maker/grav-cache@v0.2.1"
 grav-redis = "github.com/venomous-maker/grav-redis@v0.2.1"
-grav-orbit = "github.com/venomous-maker/grav-orbit@v0.2.0"
+grav-orbit = { path = "/home/venom/CLionProjects/Practice/grav-orbit" }
 grav-db = "github.com/venomous-maker/grav-db@v0.2.0"
 grav-logger = "github.com/venomous-maker/grav-logger@v0.2.1"
