@@ -6,6 +6,16 @@ compiler versions it builds with.
 
 ## Unreleased
 
+Needs grav 1.12.0 or newer.
+
+- Modules connect themselves: every class extending `ApogeePackage`
+  (apogee-package) is found when the app is created, its defaults applied,
+  its migrations added to `migrate`, and it is registered and booted;
+  `app.packages` lists them.
+- The bundled modules are packages now: their settings, wiring, commands and
+  middleware moved out of the framework into each module, and their tables
+  into migrations (run `migrate`; they were made at boot before).
+
 ## 0.3.1 (2026-11-21)
 
 - The newest releases of the modules: Pennant keeps resolved values a moment

@@ -83,6 +83,20 @@ class ReportsProvider extends ServiceProvider {
 }
 ```
 
+## Modules that connect themselves
+
+A module ships a class extending `ApogeePackage` (apogee-package): its default
+settings, its migrations, its commands, and what it binds, registers and
+routes. When the app is created every such class in the program is found,
+its defaults applied under the app's own configuration, its migrations added
+to `migrate`, and it is registered and booted like a provider: importing the
+module is all it takes. The modules the framework ships (crypt, storage, lang,
+broadcast, sockets, pennant, scout, telescope, pulse, queue-dashboard,
+socialite) and apogee-fortify, -permission and -sanctum connect this way;
+`app.packages` lists what was connected. A module's tables come from its
+migrations, so run `migrate` after adding one. `<name>.enabled = false` leaves
+a package out.
+
 Each framework provider builds its module from the configuration, as a
 singleton made on first use:
 
