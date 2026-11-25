@@ -308,8 +308,9 @@ test "packages connect themselves" {
     Config.reset()
     Env.reset()
     let app = makeApp("WIDGETS_IGNORED=1\n")
-    assertEq(app.packages.size(), 1)
-    assertEq(app.packages[0].name(), "widgets")
+    // (the framework's own modules are packages too)
+    let names = app.packages.mapTo(fn(p: ApogeePackage) -> string => p.name())
+    for (n in ["widgets", "crypt", "storage", "lang", "broadcast", "sockets", "features", "scout", "telescope", "pulse", "queue_dashboard", "socialite"]) { assert(names.contains(n)) }
     assertEq(Config.getInt("widgets.limit", 0), 7 as long)
     app.boot()
     assertEq(app.call("migrate"), 0)
