@@ -75,66 +75,8 @@ namespace apogee {
             put("auth.home", Env.get("AUTH_HOME", "/home"));
             put("auth.login", Env.get("AUTH_LOGIN", "/login"));
             put("auth.password_iterations", Env.getInt("AUTH_PASSWORD_ITERATIONS", 600000));
-            // encryption: older keys still read (comma-separated)
-            put("app.previous_keys", Env.get("APP_PREVIOUS_KEYS", ""));
             put("app.fallback_locale", Env.get("APP_FALLBACK_LOCALE", "en"));
-            // storage
-            put("filesystems.default", Env.get("FILESYSTEM_DISK", "local"));
-            put("filesystems.disks.local.root", p("storage/app"));
-            put("filesystems.disks.public.root", p("storage/app/public"));
-            put("filesystems.disks.public.url", Env.get("APP_URL", "http://localhost:8000") + "/storage");
-            put("filesystems.disks.s3.bucket", Env.get("AWS_BUCKET", ""));
-            put("filesystems.disks.s3.region", Env.get("AWS_DEFAULT_REGION", "us-east-1"));
-            put("filesystems.disks.s3.key", Env.get("AWS_ACCESS_KEY_ID", ""));
-            put("filesystems.disks.s3.secret", Env.get("AWS_SECRET_ACCESS_KEY", ""));
-            put("filesystems.disks.s3.endpoint", Env.get("AWS_ENDPOINT", ""));
-            put("filesystems.disks.s3.path_style", Env.getBool("AWS_USE_PATH_STYLE_ENDPOINT", true));
-            // translations
-            put("lang.path", p("lang"));
-            // broadcasting, and the sockets server (sockets:serve)
-            put("broadcasting.default", Env.get("BROADCAST_CONNECTION", "null"));
-            put("broadcasting.connections.sockets.url", Env.get("SOCKETS_URL", "http://127.0.0.1:6001"));
-            put("broadcasting.connections.sockets.app_id", Env.get("SOCKETS_APP_ID", "apogee"));
-            put("broadcasting.connections.sockets.key", Env.get("SOCKETS_APP_KEY", "apogee-key"));
-            put("broadcasting.connections.sockets.secret", Env.get("SOCKETS_APP_SECRET", ""));
-            put("sockets.host", Env.get("SOCKETS_HOST", "0.0.0.0"));
-            put("sockets.port", Env.getInt("SOCKETS_PORT", 6001));
-            // feature flags, search
-            put("features.store", Env.get("FEATURES_STORE", "database"));
-            put("scout.driver", Env.get("SCOUT_DRIVER", "database"));
-            put("scout.prefix", Env.get("SCOUT_PREFIX", ""));
-            put("scout.meilisearch.host", Env.get("MEILISEARCH_HOST", "http://127.0.0.1:7700"));
-            put("scout.meilisearch.key", Env.get("MEILISEARCH_KEY", ""));
-            // dashboards: Telescope (local by default), Pulse and the queue's (opt in)
-            put("telescope.enabled", Env.getBool("TELESCOPE_ENABLED", Env.get("APP_ENV", "production") == "local"));
-            put("telescope.driver", Env.get("TELESCOPE_DRIVER", "database"));
-            put("telescope.path", Env.get("TELESCOPE_PATH", "telescope"));
-            put("telescope.slow_query_ms", Env.getInt("TELESCOPE_SLOW_QUERY_MS", 100));
-            put("telescope.ignore_paths", Env.get("TELESCOPE_IGNORE_PATHS", ""));
-            put("pulse.enabled", Env.getBool("PULSE_ENABLED", false));
-            put("pulse.driver", Env.get("PULSE_DRIVER", "database"));
-            put("pulse.path", Env.get("PULSE_PATH", "pulse"));
-            put("pulse.server", Env.get("PULSE_SERVER_NAME", ""));
-            put("pulse.sample_rate", Env.get("PULSE_SAMPLE_RATE", "1"));
-            put("pulse.keep_hours", Env.getInt("PULSE_KEEP_HOURS", 168));
-            put("pulse.slow_request_ms", Env.getInt("PULSE_SLOW_REQUEST_MS", 1000));
-            put("pulse.slow_query_ms", Env.getInt("PULSE_SLOW_QUERY_MS", 1000));
-            put("pulse.slow_job_ms", Env.getInt("PULSE_SLOW_JOB_MS", 1000));
-            put("pulse.ignore_paths", Env.get("PULSE_IGNORE_PATHS", ""));
-            put("queue_dashboard.enabled", Env.getBool("QUEUE_DASHBOARD_ENABLED", false));
-            put("queue_dashboard.driver", Env.get("QUEUE_DASHBOARD_DRIVER", "database"));
-            put("queue_dashboard.path", Env.get("QUEUE_DASHBOARD_PATH", "queue-dashboard"));
-            // social sign-in: each provider with a client id (GITHUB_CLIENT_ID…)
-            let url = Env.get("APP_URL", "http://localhost:8000");
-            for (name in ["github", "google", "microsoft", "gitlab", "bitbucket", "discord", "facebook", "linkedin", "slack", "oidc"]) {
-                let up = Str.upper(name);
-                put("services." + name + ".client_id", Env.get(up + "_CLIENT_ID", ""));
-                put("services." + name + ".client_secret", Env.get(up + "_CLIENT_SECRET", ""));
-                put("services." + name + ".redirect", Env.get(up + "_REDIRECT_URI", url + "/auth/" + name + "/callback"));
-            }
-            put("services.microsoft.tenant", Env.get("MICROSOFT_TENANT", "common"));
-            put("services.gitlab.host", Env.get("GITLAB_HOST", "https://gitlab.com"));
-            put("services.oidc.issuer", Env.get("OIDC_ISSUER", ""));
+            // (each module's own settings come from its package: apogee-package)
         }
     }
 }
