@@ -28,7 +28,7 @@ every Apogee module from your `.env` and `config/*.json`.
 - the framework's console commands and `make:*` generators
 - maintenance mode
 
-```grav
+```typescript
 import "std"
 import "apogee-framework"
 use apogee.*
@@ -69,7 +69,7 @@ fn main() {
 
 ## Service providers
 
-```grav
+```typescript
 class AppServiceProvider extends ServiceProvider {
     fn register() { self.app.container.singleton::<Payments>(fn(c: Container) -> Payments { return new Payments(Config.getString("services.stripe.key")) }) }
     fn boot(events: Events, gate: Gate) {                 // parameters from the container
@@ -129,7 +129,7 @@ The three dashboards answer anyone on this machine when `APP_ENV=local`.
 Anywhere else they answer only a signed-in user whom the gate allows
 `viewTelescope`, `viewPulse` or `viewQueueDashboard`:
 
-```grav
+```typescript
 gate.define("viewPulse", fn(user: any, args: Array<any>) -> any { return (user as User).isAdmin })
 ```
 
