@@ -8,31 +8,31 @@ apogee-support = "github.com/venomous-maker/apogee-support@v0.2.0"
 apogee-container = "github.com/venomous-maker/apogee-container@v0.2.0"
 apogee-config = "github.com/venomous-maker/apogee-config@v0.2.0"
 apogee-events = "github.com/venomous-maker/apogee-events@v0.2.0"
-apogee-http = { path = "/home/venom/CLionProjects/Practice/apogee-http" }
-apogee-routing = { path = "/home/venom/CLionProjects/Practice/apogee-routing" }
-apogee-validation = "github.com/venomous-maker/apogee-validation@v0.2.0"
-apogee-session = "github.com/venomous-maker/apogee-session@v0.2.1"
-apogee-view = "github.com/venomous-maker/apogee-view@v0.2.0"
-apogee-auth = "github.com/venomous-maker/apogee-auth@v0.2.1"
-apogee-queue = "github.com/venomous-maker/apogee-queue@v0.3.0"
-apogee-console = "github.com/venomous-maker/apogee-console@v0.2.1"
-apogee-scheduler = "github.com/venomous-maker/apogee-scheduler@v0.2.2"
-apogee-mail = "github.com/venomous-maker/apogee-mail@v0.2.2"
-apogee-package = { path = "/home/venom/CLionProjects/Practice/apogee-package" }
-apogee-crypt = { path = "/home/venom/CLionProjects/Practice/apogee-crypt" }
-apogee-storage = { path = "/home/venom/CLionProjects/Practice/apogee-storage" }
-apogee-lang = { path = "/home/venom/CLionProjects/Practice/apogee-lang" }
-apogee-sockets = { path = "/home/venom/CLionProjects/Practice/apogee-sockets" }
-apogee-broadcast = { path = "/home/venom/CLionProjects/Practice/apogee-broadcast" }
-apogee-queue-dashboard = { path = "/home/venom/CLionProjects/Practice/apogee-queue-dashboard" }
-apogee-http-client = "github.com/venomous-maker/apogee-http-client@v0.1.1"
-apogee-pennant = { path = "/home/venom/CLionProjects/Practice/apogee-pennant" }
-apogee-scout = { path = "/home/venom/CLionProjects/Practice/apogee-scout" }
-apogee-telescope = { path = "/home/venom/CLionProjects/Practice/apogee-telescope" }
-apogee-pulse = { path = "/home/venom/CLionProjects/Practice/apogee-pulse" }
-apogee-socialite = { path = "/home/venom/CLionProjects/Practice/apogee-socialite" }
-grav-cache = "github.com/venomous-maker/grav-cache@v0.2.1"
+apogee-http = "github.com/venomous-maker/apogee-http@v0.3.0"
+apogee-routing = "github.com/venomous-maker/apogee-routing@v0.3.0"
+apogee-validation = "github.com/venomous-maker/apogee-validation@v0.2.1"
+apogee-session = "github.com/venomous-maker/apogee-session@v0.2.2"
+apogee-view = "github.com/venomous-maker/apogee-view@v0.2.1"
+apogee-auth = "github.com/venomous-maker/apogee-auth@v0.2.2"
+apogee-queue = "github.com/venomous-maker/apogee-queue@v0.3.1"
+apogee-console = "github.com/venomous-maker/apogee-console@v0.2.2"
+apogee-scheduler = "github.com/venomous-maker/apogee-scheduler@v0.2.3"
+apogee-mail = "github.com/venomous-maker/apogee-mail@v0.3.0"
+apogee-package = "github.com/venomous-maker/apogee-package@v0.1.0"
+apogee-crypt = "github.com/venomous-maker/apogee-crypt@v0.2.0"
+apogee-storage = "github.com/venomous-maker/apogee-storage@v0.2.0"
+apogee-lang = "github.com/venomous-maker/apogee-lang@v0.2.0"
+apogee-sockets = "github.com/venomous-maker/apogee-sockets@v0.2.0"
+apogee-broadcast = "github.com/venomous-maker/apogee-broadcast@v0.2.0"
+apogee-queue-dashboard = "github.com/venomous-maker/apogee-queue-dashboard@v0.3.0"
+apogee-http-client = "github.com/venomous-maker/apogee-http-client@v0.2.0"
+apogee-pennant = "github.com/venomous-maker/apogee-pennant@v0.2.0"
+apogee-scout = "github.com/venomous-maker/apogee-scout@v0.2.0"
+apogee-telescope = "github.com/venomous-maker/apogee-telescope@v0.2.0"
+apogee-pulse = "github.com/venomous-maker/apogee-pulse@v0.2.0"
+apogee-socialite = "github.com/venomous-maker/apogee-socialite@v0.2.0"
+grav-cache = "github.com/venomous-maker/grav-cache@v0.2.2"
 grav-redis = "github.com/venomous-maker/grav-redis@v0.2.1"
-grav-orbit = { path = "/home/venom/CLionProjects/Practice/grav-orbit" }
+grav-orbit = "github.com/venomous-maker/grav-orbit@v0.3.0"
 grav-db = "github.com/venomous-maker/grav-db@v0.2.0"
 grav-logger = "github.com/venomous-maker/grav-logger@v0.2.1"

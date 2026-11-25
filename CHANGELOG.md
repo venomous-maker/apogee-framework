@@ -16,6 +16,10 @@ Needs grav 1.12.0 or newer.
   middleware moved out of the framework into each module, and their tables
   into migrations (run `migrate`; they were made at boot before).
 
+### Dependencies
+
+- Uses apogee-http 0.3.0, apogee-routing 0.3.0, apogee-validation 0.2.1, apogee-session 0.2.2, apogee-view 0.2.1, apogee-auth 0.2.2, apogee-queue 0.3.1, apogee-console 0.2.2, apogee-scheduler 0.2.3, apogee-mail 0.3.0, apogee-package 0.1.0, apogee-crypt 0.2.0, apogee-storage 0.2.0, apogee-lang 0.2.0, apogee-sockets 0.2.0, apogee-broadcast 0.2.0, apogee-queue-dashboard 0.3.0, apogee-http-client 0.2.0, apogee-pennant 0.2.0, apogee-scout 0.2.0, apogee-telescope 0.2.0, apogee-pulse 0.2.0, apogee-socialite 0.2.0, grav-cache 0.2.2, grav-orbit 0.3.0 (from their GitHub tags).
+
 ## 0.3.1 (2026-11-21)
 
 - The newest releases of the modules: Pennant keeps resolved values a moment
