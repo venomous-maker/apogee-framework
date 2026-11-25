@@ -321,7 +321,6 @@ namespace apogee {
         }
         fn create() -> Application {
             for (p in FrameworkProviders.all()) { self.app.register(p); }
-            for (p in ModuleProviders.all()) { self.app.register(p); }
             AppPackages.connect(self.app);
             for (p in self.extra) { self.app.register(p); }
             return self.app;
