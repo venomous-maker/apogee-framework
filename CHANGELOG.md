@@ -6,6 +6,8 @@ compiler versions it builds with.
 
 ## Unreleased
 
+## 0.4.2 (2026-11-28)
+
 ### Fixes
 
 - A Redis connection shared by several threads (the cache, session and queue-dashboard stores, used by a multi-threaded server or queue worker) no longer mixes up replies or stalls: every command is one locked round trip (grav-redis 0.2.2). Uses the new releases of apogee-auth, apogee-broadcast, apogee-console, apogee-crypt, apogee-lang, apogee-mail, apogee-package, apogee-pennant, apogee-pulse, apogee-queue, apogee-queue-dashboard, apogee-scheduler, apogee-scout, apogee-session, apogee-socialite, apogee-sockets, apogee-storage, apogee-telescope, grav-cache, grav-redis.
